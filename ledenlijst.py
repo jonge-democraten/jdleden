@@ -55,6 +55,9 @@ AFDELINGEN = {
 
 
 # read a csv file from disk.
+# Set header=True to force the removal of the first line
+# Set header=False to not remove the first line
+# Set header=None (default) to autodetect
 def read_csv(f, header=None):
 	# Try to guess the csv file format
 	file = open(f)
@@ -90,13 +93,9 @@ def get_new_and_former_members(oldlist, newlist):
 
 def get_changed_members(oldlist, newlist):
 	# Get the members who still exsist
-	# or is not the right operator  vv
-	same = list(set(oldlist.keys()) or set(newlist.keys()))
+	intersect = list(set(oldlist.keys()) & set(newlist.keys()))
 	# Find out who has changed
-	changed = []
-	for id in same:
-		if oldlist[id] != newlist[id]:
-			changed.append(id)
+	changed = filter(lambda id: oldlist[id] != newlist[id], intersect)
 	return changed
 
 
