@@ -55,14 +55,17 @@ AFDELINGEN = {
 
 
 # read a csv file from disk.
-def read_csv(f):
+def read_csv(f, header=None):
 	# Try to guess the csv file format
 	file = open(f)
 	dialect = csv.Sniffer().sniff(file.read(4096))
 	file.seek(0)
 	# Check for header
-	has_header = csv.Sniffer().has_header(file.read(4096))
-	file.seek(0)
+	if header == None:
+		has_header = csv.Sniffer().has_header(file.read(4096))
+		file.seek(0)
+	else:
+		has_header = bool(header)
 	# Lees de data
 	reader = csv.reader(file, dialect)
 	grid = [r for r in reader]
@@ -87,12 +90,13 @@ def get_new_and_former_members(oldlist, newlist):
 
 def get_changed_members(oldlist, newlist):
 	# Get the members who still exsist
+	# or is not the right operator  vv
 	same = list(set(oldlist.keys()) or set(newlist.keys()))
 	# Find out who has changed
 	changed = []
 	for id in same:
-		if oldlist[id] != newlist[id]
-		changed.append(id)
+		if oldlist[id] != newlist[id]:
+			changed.append(id)
 	return changed
 
 
