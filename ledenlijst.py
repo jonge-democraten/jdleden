@@ -142,7 +142,7 @@ if __name__ == "__main__":
 	min = split_by_department(min)
 	changed = split_by_department(changed)
 	for d in plus.keys():
-		write_csv("%s-plus.csv" % (d), plus[d])
+		write_csv("%s-add.csv" % (d), plus[d])
 	for d in min.keys():
 		write_csv("%s-min.csv" % (d), min[d])
 	for d in changed.keys():
