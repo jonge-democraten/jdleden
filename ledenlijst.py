@@ -103,6 +103,19 @@ def get_changed_members(oldlist, newlist):
 def usage():
 	print "Usage: %s old.csv new.csv" % (sys.argv[0])
 
+def split_by_department(members):
+	s = dict()
+	for d in AFDELINGEN.keys():
+		tmp = dict()
+		for id in members.keys():
+			pc = parse_postcode(members[id][POSTCODE])
+			for r in AFDELINGEN[d]:
+				if (pc >= r[0]) and (pc <= r[1]):
+					tmp[id] = members[id]
+		if tmp:
+			s[d] = tmp
+	return s
+
 
 if __name__ == "__main__":
 	if len(sys.argv) != 3:
@@ -115,19 +128,16 @@ if __name__ == "__main__":
 	plus, min = get_new_and_former_members(old, new)
 	changed = get_changed_members(old, new)
 
-	# Write the new memnders to file for each departement
-	for d in AFDELINGEN.keys():
-		tmp = dict()
-		for id in plus.keys():
-			pc = parse_postcode(plus[id][POSTCODE])
-			for r in AFDELINGEN[d]:
-				if (pc >= r[0]) and (pc <= r[1]):
-					tmp[id] = plus[id]
-		if tmp:
-			write_csv("%s-plus.csv" % (d), tmp)
+			
+	plus = split_by_department(plus)
+	min = split_by_department(min)
+	changed = split_by_department(changed)
+	for d in plus.keys():
+		write_csv("%s-plus.csv" % (d), plus[d])
+	for d in min.keys():
+		write_csv("%s-min.csv" % (d), min[d])
+	for d in changed.keys():
+		write_csv("%s-upd.csv" % (d), changed[d])
 
-	write_csv("plus.csv", plus)
-	write_csv("min.csv", min)
-	write_csv("upd.csv", changed)
 
 
