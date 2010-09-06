@@ -7,6 +7,7 @@ import csv
 # Geef alle belangrijke kolommen een naam
 LIDNUMMER = 0
 EMAIL = 10
+POSTCODE = 8
 
 # CSV Header
 HEADER = [
@@ -113,6 +114,17 @@ if __name__ == "__main__":
 
 	plus, min = get_new_and_former_members(old, new)
 	changed = get_changed_members(old, new)
+
+	# Write the new memnders to file for each departement
+	for d in AFDELINGEN.keys():
+		tmp = dict()
+		for id in plus.keys():
+			pc = parse_postcode(plus[id][POSTCODE])
+			for r in AFDELINGEN[d]:
+				if (pc >= r[0]) and (pc <= r[1]):
+					tmp[id] = plus[id]
+		if tmp:
+			write_csv("%s-plus.csv" % (d), tmp)
 
 	write_csv("plus.csv", plus)
 	write_csv("min.csv", min)
