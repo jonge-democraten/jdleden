@@ -6,10 +6,15 @@ import csv
 
 # Geef alle belangrijke kolommen een naam
 LIDNUMMER = 0
-EMAIL = 1
+EMAIL = 10
 
 # CSV Header
-HEADER = ["Lidnummer", ]
+HEADER = [
+	"Lidnummer",		"Lidsoort",			"Lid sinds",	"Lid beeindigd",
+	"Volledige naam",	"Geslacht",			"Geboortedatum","Straat",
+	"Postcode",			"Plaats",			"Emailadres",	"Afdeling",
+	"Regio",			"Telefoonnummer",	"Mobiel",		"Stemrecht"
+]
 
 
 # Alle afdelingen met bijbehorende postcode ranges
@@ -55,30 +60,25 @@ AFDELINGEN = {
 
 
 # read a csv file from disk.
-# Set header=True to force the removal of the first line
-# Set header=False to not remove the first line
-# Set header=None (default) to autodetect
 def read_csv(f, header=None):
 	# Try to guess the csv file format
 	file = open(f)
 	dialect = csv.Sniffer().sniff(file.read(4096))
 	file.seek(0)
-	# Check for header
-	if header == None:
-		has_header = csv.Sniffer().has_header(file.read(4096))
-		file.seek(0)
-	else:
-		has_header = bool(header)
 	# Lees de data
 	reader = csv.reader(file, dialect)
-	grid = [r for r in reader]
-	if has_header:
-		grid =  grid[1:]
+	grid = [r for r in reader][1:] # Remove first row (header)
 	# Maak de leden toegankelijk op lidnummer
 	leden = {}
 	for r in grid:
 		leden[int(r[LIDNUMMER])] = r
 	return leden
+
+
+def write_csv(f, members):
+	w = csv.writer(open(f, "w+"))
+	w.writerow(HEADER)
+	w.writerows(members.values())
 
 
 def parse_postcode(s):
@@ -87,8 +87,8 @@ def parse_postcode(s):
 def get_new_and_former_members(oldlist, newlist):
 	old = set(oldlist.keys())
 	new = set(newlist.keys())
-	new_members = list(new-old)
-	former_members = list(old-new)
+	new_members = dict([(id, newlist[id]) for id in list(new-old)])
+	former_members = dict([(id, oldlist[id]) for id in list(old-new)])
 	return (new_members, former_members)
 
 def get_changed_members(oldlist, newlist):
@@ -96,7 +96,7 @@ def get_changed_members(oldlist, newlist):
 	intersect = list(set(oldlist.keys()) & set(newlist.keys()))
 	# Find out who has changed
 	changed = filter(lambda id: oldlist[id] != newlist[id], intersect)
-	return changed
+	return dict([(id, newlist[id]) for id in changed])
 
 
 def usage():
@@ -108,7 +108,14 @@ if __name__ == "__main__":
 		usage()
 		sys.exit(-1)
 
+	old = read_csv(sys.argv[1])
+	new = read_csv(sys.argv[2])
 
+	plus, min = get_new_and_former_members(old, new)
+	changed = get_changed_members(old, new)
 
+	write_csv("plus.csv", plus)
+	write_csv("min.csv", min)
+	write_csv("upd.csv", changed)
 
 
