@@ -117,6 +117,15 @@ def split_by_department(members):
 	return s
 
 
+def update_db(host, db, user, passwd, members):
+	pass
+	# TODO:
+	# - remove old members
+	# - add new members to digizine
+	# - add new members to department lists
+	# - update changed member's name and/or email
+
+
 if __name__ == "__main__":
 	if len(sys.argv) != 3:
 		usage()
