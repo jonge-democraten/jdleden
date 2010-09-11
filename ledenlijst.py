@@ -2,7 +2,11 @@
 
 import sys
 import csv
+import MySQLdb
 
+DB_NAME = "jddev"
+DB_USER = "jddev"
+DB_PASSWD = "eJzbNru5wmJrb7FM"
 
 # Geef alle belangrijke kolommen een naam
 LIDNUMMER = 0
@@ -117,36 +121,42 @@ def split_by_department(members):
 	return s
 
 
-def update_db(host, db, user, passwd, members):
-	pass
-	# TODO:
-	# - remove old members
-	# - add new members to digizine
-	# - add new members to department lists
-	# - update changed member's name and/or email
-
 
 if __name__ == "__main__":
 	if len(sys.argv) != 3:
 		usage()
 		sys.exit(-1)
 
+	print "Reading member lists...",
 	old = read_csv(sys.argv[1])
 	new = read_csv(sys.argv[2])
+	print "Done"
 
+	print "Computing changes...",
 	plus, min = get_new_and_former_members(old, new)
 	changed = get_changed_members(old, new)
+	print "Done"
+	
+	print "Writing cvs files:"
+	plus_split = split_by_department(plus)
+	min_split = split_by_department(min)
+	changed_split = split_by_department(changed)
+	for d in plus_split.keys():
+		print "%s-plus.csv" % (d), 
+		write_csv("%s-plus.csv" % (d), plus_split[d])
+		print "Done"
+	for d in min_split.keys():
+		print "%s-min.csv" % (d),
+		write_csv("%s-min.csv" % (d), min_split[d])
+		print "Done"
+	for d in changed_split.keys():
+		print "%s-upd.csv" % (d),
+		write_csv("%s-upd.csv" % (d), changed_split[d])
+		print "Done"
 
-			
-	plus = split_by_department(plus)
-	min = split_by_department(min)
-	changed = split_by_department(changed)
-	for d in plus.keys():
-		write_csv("%s-plus.csv" % (d), plus[d])
-	for d in min.keys():
-		write_csv("%s-min.csv" % (d), min[d])
-	for d in changed.keys():
-		write_csv("%s-upd.csv" % (d), changed[d])
+	db = MySQLdb.connect(user=DB_USER, passwd=DB_PASSWD, db=DB_NAME)
+	c = db.cursor()
 
+	
 
 
