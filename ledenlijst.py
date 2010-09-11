@@ -12,6 +12,7 @@ DB_PASSWD = "eJzbNru5wmJrb7FM"
 LIDNUMMER = 0
 EMAIL = 10
 POSTCODE = 8
+NAAM  = 3
 
 # CSV Header
 HEADER = [
@@ -154,8 +155,16 @@ if __name__ == "__main__":
 		write_csv("%s-upd.csv" % (d), changed_split[d])
 		print "Done"
 
+	# In de acajoom tables gebruik ik het email adres als identifier voor de persoon.
+	# De lid id kan niet gebruikt worden vanwege mogelijke collisions door 2 
+	# onafhankelijke inschrijfmogenlijkheden (nieuwsbrief form en ledenadministratie).
 	db = MySQLdb.connect(user=DB_USER, passwd=DB_PASSWD, db=DB_NAME)
 	c = db.cursor()
+	
+	for d in plus_split.keys():
+		values = [(plus_split[d][id][NAAM], plus_split[d][id][EMAIL]) for id in plus_split[d].keys()]
+		c.executemany("INSERT INTO jos_acajoom_subscribers ('name', 'email') VALUES ('%s', '%s')", values)
+		print rows	
 
 	
 
