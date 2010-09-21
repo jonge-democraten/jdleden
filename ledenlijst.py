@@ -160,11 +160,16 @@ if __name__ == "__main__":
 	# onafhankelijke inschrijfmogenlijkheden (nieuwsbrief form en ledenadministratie).
 	db = MySQLdb.connect(user=DB_USER, passwd=DB_PASSWD, db=DB_NAME)
 	c = db.cursor()
-	
+
+	# Add new members	
 	for d in plus_split.keys():
 		values = [(plus_split[d][id][NAAM], plus_split[d][id][EMAIL]) for id in plus_split[d].keys()]
 		c.executemany("INSERT INTO jos_acajoom_subscribers ('name', 'email') VALUES ('%s', '%s')", values)
-		print rows	
+		# Add the new members to their department
+		values = [(plus_split[d][id][EMAIL], d) for id in plus_split[d].keys()]
+		c.executemany("INSERT INTO jos_acajoom_queue ('subscriber_id', 'list_id') VALUES ((SELECT id FROM jos_acajoom_subscribers WHERE 'email' = '%s' LIMIT 1), (SELECT id FROM jos_acajoom_lists WHERE 'list_name' = 'Nieuwsbrief %s'))", values)
+	
+	# remove old members
 
 	
 
