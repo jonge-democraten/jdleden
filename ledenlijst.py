@@ -173,7 +173,7 @@ if __name__ == "__main__":
 	c.executemany("DELETE FROM jos_acajoom_queue WHERE subsciber_id = (SELECT id FROM jos_acajoom_subscribers WHERE 'email' = '%s')", [(m[EMAIL], ) for m in min])
 	
 	# update changed members
-	values = [(changed[id][EMAIL], changed[id][NAME], old[id][EMAIL]) for id in changed.keys()]
+	values = [(changed[id][EMAIL], changed[id][NAAM], old[id][EMAIL]) for id in changed.keys()]
 	c.executemany("UPDATE jos_acajoom_subscribers SET name='%s', email='%s' WHERE email='%s'", values)
 	
 
