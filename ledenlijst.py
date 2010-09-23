@@ -167,9 +167,16 @@ if __name__ == "__main__":
 		c.executemany("INSERT INTO jos_acajoom_subscribers ('name', 'email') VALUES ('%s', '%s')", values)
 		# Add the new members to their department
 		values = [(plus_split[d][id][EMAIL], d) for id in plus_split[d].keys()]
-		c.executemany("INSERT INTO jos_acajoom_queue ('subscriber_id', 'list_id') VALUES ((SELECT id FROM jos_acajoom_subscribers WHERE 'email' = '%s' LIMIT 1), (SELECT id FROM jos_acajoom_lists WHERE 'list_name' = 'Nieuwsbrief %s'))", values)
+		c.executemany("INSERT INTO jos_acajoom_queue ('subscriber_id', 'list_id') VALUES ((SELECT id FROM jos_acajoom_subscribers WHERE 'email' = '%s' LIMIT 1), (SELECT id FROM jos_acajoom_lists WHERE 'list_name' = 'Nieuwsbrief %s'))", values)	
 	
 	# remove old members
+	c.executemany("DELETE FROM jos_acajoom_queue WHERE subsciber_id = (SELECT id FROM jos_acajoom_subscribers WHERE 'email' = '%s')", [(m[EMAIL], ) for m in min])
+	
+	# update changed members
+	values = [(changed[id][EMAIL], changed[id][NAME], old[id][EMAIL]) for id in changed.keys()]
+	c.executemany("UPDATE jos_acajoom_subscribers SET name='%s', email='%s' WHERE email='%s'", values)
+	
+
 
 	
 
