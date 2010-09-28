@@ -2,6 +2,7 @@
 
 import sys
 import csv
+import codecs
 import MySQLdb
 
 DB_NAME = "jddev"
@@ -9,10 +10,10 @@ DB_USER = "jddev"
 DB_PASSWD = "eJzbNru5wmJrb7FM"
 
 # Geef alle belangrijke kolommen een naam
-LIDNUMMER = 0
-EMAIL = 10
-POSTCODE = 8
-NAAM  = 3
+LIDNUMMER = 1
+EMAIL = 11
+POSTCODE = 9
+NAAM  = 5
 
 # CSV Header
 HEADER = [
@@ -67,16 +68,14 @@ AFDELINGEN = {
 
 # read a csv file from disk.
 def read_csv(f, header=None):
-	# Try to guess the csv file format
-	file = open(f)
-	dialect = csv.Sniffer().sniff(file.read(4096))
-	file.seek(0)
-	# Lees de data
-	reader = csv.reader(file, dialect)
+	file = codecs.open(f, encoding="utf-16")
+	data = [l.encode("utf-8") for l in file.readlines()]
+	reader = csv.reader(data)
 	grid = [r for r in reader][1:] # Remove first row (header)
 	# Maak de leden toegankelijk op lidnummer
 	leden = {}
 	for r in grid:
+		print r[LIDNUMMER]
 		leden[int(r[LIDNUMMER])] = r
 	return leden
 
@@ -129,7 +128,9 @@ if __name__ == "__main__":
 		sys.exit(-1)
 
 	print "Reading member lists...",
+	print "\tOld"
 	old = read_csv(sys.argv[1])
+	print "\tNew"
 	new = read_csv(sys.argv[2])
 	print "Done"
 
