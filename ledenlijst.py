@@ -3,6 +3,7 @@
 import sys
 import csv
 import MySQLdb
+import xlrd
 
 DB_NAME = "jddev"
 DB_USER = "jddev"
@@ -16,12 +17,11 @@ NAAM  = 3
 
 # CSV Header
 HEADER = [
-	"Lidnummer",		"Lidsoort",			"Lid sinds",	"Lid beeindigd",
-	"Volledige naam",	"Geslacht",			"Geboortedatum","Straat",
-	"Postcode",			"Plaats",			"Emailadres",	"Afdeling",
-	"Regio",			"Telefoonnummer",	"Mobiel",		"Stemrecht"
+	"Lidnummer", 		"Lidsoort", 		"Lid sinds", 		"Lid beeindigd", 
+	"Volledige naam", 	"Geslacht", 		"Geboortedatum",	"Straat",
+	"Postcode",			"Plaats",			"Emailadres",		"Afdeling",
+	"Regio",			"Telefoonnummer",	"Mobiel",			"Stemrecht"
 ]
-
 
 # Alle afdelingen met bijbehorende postcode ranges
 AFDELINGEN = {
@@ -80,6 +80,17 @@ def read_csv(f, header=None):
 		leden[int(r[LIDNUMMER])] = r
 	return leden
 
+# Read xls file from disk
+def read_xls(f):
+	book = xlrd.open_workbook(f)
+	sheet = book.sheet_by_index(0)
+	leden = {}
+	print sheet.nrows
+	for i in xrange(1,sheet.nrows-1): # Skip header and "Totaal:" row
+		row = sheet.row(i)
+		#print i, int(row[LIDNUMMER].value)
+		leden[int(row[LIDNUMMER].value)] = [c.value for c in row]
+	return leden
 
 def write_csv(f, members):
 	w = csv.writer(open(f, "w+"))
