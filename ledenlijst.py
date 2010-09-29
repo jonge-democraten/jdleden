@@ -13,7 +13,7 @@ DB_PASSWD = "eJzbNru5wmJrb7FM"
 LIDNUMMER = 0
 EMAIL = 10
 POSTCODE = 8
-NAAM  = 3
+NAAM  = 4
 
 # CSV Header
 HEADER = [
@@ -99,7 +99,10 @@ def write_csv(f, members):
 
 
 def parse_postcode(s):
-	return int(s.strip()[:4])
+	try:
+		return int(s.strip()[:4])
+	except:
+		return False # Unknown format
 
 def get_new_and_former_members(oldlist, newlist):
 	old = set(oldlist.keys())
@@ -140,8 +143,8 @@ if __name__ == "__main__":
 		sys.exit(-1)
 
 	print "Reading member lists...",
-	old = read_csv(sys.argv[1])
-	new = read_csv(sys.argv[2])
+	old = read_xls(sys.argv[1])
+	new = read_xls(sys.argv[2])
 	print "Done"
 
 	print "Computing changes...",
