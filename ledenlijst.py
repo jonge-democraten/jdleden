@@ -95,8 +95,8 @@ def read_xls(f):
 def write_csv(f, members):
 	w = csv.writer(open(f, "w+"))
 	w.writerow(HEADER)
-	w.writerows(members.values())
-
+	# Ugly hack to convert all values to latin-1 strings
+	w.writerows([[unicode(c).encode('latin-1') for c in r] for r in members.values()])
 
 def parse_postcode(s):
 	try:
