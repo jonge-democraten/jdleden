@@ -85,7 +85,6 @@ def read_xls(f):
 	book = xlrd.open_workbook(f)
 	sheet = book.sheet_by_index(0)
 	leden = {}
-	print sheet.nrows
 	for i in xrange(1,sheet.nrows-1): # Skip header and "Totaal:" row
 		row = sheet.row(i)
 		#print i, int(row[LIDNUMMER].value)
@@ -157,17 +156,14 @@ if __name__ == "__main__":
 	min_split = split_by_department(min)
 	changed_split = split_by_department(changed)
 	for d in plus_split.keys():
-		print "%s-plus.csv" % (d), 
+		print "%s-plus.csv\t%d" % (d, len(plus_split[d]))
 		write_csv("%s-plus.csv" % (d), plus_split[d])
-		print "Done"
 	for d in min_split.keys():
-		print "%s-min.csv" % (d),
+		print "%s-min.csv\t%d" % (d, len(min_split[d]))
 		write_csv("%s-min.csv" % (d), min_split[d])
-		print "Done"
 	for d in changed_split.keys():
-		print "%s-upd.csv" % (d),
+		print "%s-upd.csv\t%d" % (d, len(changed_split[d]))
 		write_csv("%s-upd.csv" % (d), changed_split[d])
-		print "Done"
 
 	# In de acajoom tables gebruik ik het email adres als identifier voor de persoon.
 	# De lid id kan niet gebruikt worden vanwege mogelijke collisions door 2 
@@ -178,10 +174,10 @@ if __name__ == "__main__":
 	# Add new members	
 	for d in plus_split.keys():
 		values = [(plus_split[d][id][NAAM], plus_split[d][id][EMAIL]) for id in plus_split[d].keys()]
-		c.executemany("INSERT INTO jos_acajoom_subscribers ('name', 'email') VALUES ('%s', '%s')", values)
+		c.executemany("INSERT INTO jos_acajoom_subscribers (name, email) VALUES (%s, %s)", values)
 		# Add the new members to their department
 		values = [(plus_split[d][id][EMAIL], d) for id in plus_split[d].keys()]
-		c.executemany("INSERT INTO jos_acajoom_queue ('subscriber_id', 'list_id') VALUES ((SELECT id FROM jos_acajoom_subscribers WHERE 'email' = '%s' LIMIT 1), (SELECT id FROM jos_acajoom_lists WHERE 'list_name' = 'Nieuwsbrief %s'))", values)	
+		c.executemany("INSERT INTO jos_acajoom_queue (subscriber_id, list_id) VALUES ((SELECT id FROM jos_acajoom_subscribers WHERE email = %s LIMIT 1), (SELECT id FROM jos_acajoom_lists WHERE list_name = 'Nieuwsbrief %s'))", values)	
 	
 	# remove old members
 	c.executemany("DELETE FROM jos_acajoom_queue WHERE subsciber_id = (SELECT id FROM jos_acajoom_subscribers WHERE 'email' = '%s')", [(m[EMAIL], ) for m in min])
