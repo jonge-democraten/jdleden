@@ -28,7 +28,7 @@ AFDELINGEN = {
 	"Amsterdam":[
 		(1000,2159),
 		(8200,8259)],
-	"LeidenHaaglanden":[
+	"Leiden-Haaglanden":[
 		(2160,2799)],
 	"Rotterdam":[
 		(2800,3399),
@@ -42,7 +42,7 @@ AFDELINGEN = {
 	"Brabant":[
 		(4600,5339),
 		(5460,5799)],
-	"Nijmegen":[
+	"Arnhem-Nijmegen":[
 		(5340,5459),
 		(5800,5999),
 		(6500,6699),
@@ -121,20 +121,25 @@ def get_changed_members(oldlist, newlist):
 def usage():
 	print "Usage: %s old.csv new.csv" % (sys.argv[0])
 
+def find_department(pc):
+	if not pc:
+		return "Buitenland"
+	for d in AFDELINGEN.keys():
+		for r in AFDELINGEN[d]:
+			if (pc >= r[0]) and (pc <= r[1]):
+				return d
+	return "Buitenland"
+
 def split_by_department(members):
 	s = dict()
-	for d in AFDELINGEN.keys():
-		tmp = dict()
-		for id in members.keys():
-			pc = parse_postcode(members[id][POSTCODE])
-			for r in AFDELINGEN[d]:
-				if (pc >= r[0]) and (pc <= r[1]):
-					tmp[id] = members[id]
-		if tmp:
-			s[d] = tmp
+	for id in members.keys():
+		pc = parse_postcode(members[id][POSTCODE])
+		d = find_department(pc)
+		if not s.has_key(d):
+			s[d] = dict()
+		s[d][id] = members[id]
 	return s
-
-
+			
 
 if __name__ == "__main__":
 	if len(sys.argv) != 3:
@@ -170,15 +175,23 @@ if __name__ == "__main__":
 	# onafhankelijke inschrijfmogenlijkheden (nieuwsbrief form en ledenadministratie).
 	db = MySQLdb.connect(user=DB_USER, passwd=DB_PASSWD, db=DB_NAME)
 	c = db.cursor()
+	c.execute("BEGIN")
 
 	# Add new members	
 	for d in plus_split.keys():
 		values = [(plus_split[d][id][NAAM], plus_split[d][id][EMAIL]) for id in plus_split[d].keys()]
 		c.executemany("INSERT INTO jos_acajoom_subscribers (name, email) VALUES (%s, %s)", values)
 		# Add the new members to their department
-		values = [(plus_split[d][id][EMAIL], d) for id in plus_split[d].keys()]
-		c.executemany("INSERT INTO jos_acajoom_queue (subscriber_id, list_id) VALUES ((SELECT id FROM jos_acajoom_subscribers WHERE email = %s LIMIT 1), (SELECT id FROM jos_acajoom_lists WHERE list_name = 'Nieuwsbrief %s'))", values)	
-	
+		values = [(db.escape_string(plus_split[d][id][EMAIL]), db.escape_string("Nieuwsbrief "+d)) for id in plus_split[d].keys()]
+		for v in values:
+			try:
+				c.execute("""INSERT INTO jos_acajoom_queue (subscriber_id, list_id) VALUES ((SELECT id FROM jos_acajoom_subscribers WHERE email = %s LIMIT 1), (SELECT id FROM jos_acajoom_lists WHERE list_name = %s))""", v)	
+			except:
+				print "ERROR: Er is geen Nieuwsbrief \"%s\"" % (v[1], )
+				c.execute("ROLLBACK")
+				db.close()
+				sys.exit()
+
 	# remove old members
 	c.executemany("DELETE FROM jos_acajoom_queue WHERE subsciber_id = (SELECT id FROM jos_acajoom_subscribers WHERE 'email' = '%s')", [(m[EMAIL], ) for m in min])
 	
