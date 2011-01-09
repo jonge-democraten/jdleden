@@ -5,9 +5,9 @@ import csv
 import MySQLdb
 import xlrd
 
-DB_NAME = "jddev"
-DB_USER = "jddev"
-DB_PASSWD = "eJzbNru5wmJrb7FM"
+DB_NAME = "jd"
+DB_USER = "jd"
+DB_PASSWD = "yxpsM3HajTxKA24t"
 
 # Geef alle belangrijke kolommen een naam
 LIDNUMMER = 0
@@ -199,7 +199,7 @@ if __name__ == "__main__":
 	values = [(changed[id][EMAIL], changed[id][NAME], old[id][EMAIL]) for id in changed.keys()]
 	c.executemany("UPDATE jos_acajoom_subscribers SET name='%s', email='%s' WHERE email='%s'", values)
 	
-
+	c.execute("COMMIT")
 
 	
 
