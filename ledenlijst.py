@@ -1,10 +1,12 @@
 #!/usr/bin/env python
 
 import sys
+import os
 import csv
 import MySQLdb
 import xlrd
 import time
+import hashlib
 
 t = time.strftime("%s")
 
@@ -166,30 +168,52 @@ if __name__ == "__main__":
 		usage()
 		sys.exit(-1)
 
+	print "Verifying sanity...",
+	oldfile = sys.argv[1]
+	newfile = sys.argv[2]
+	with open(oldfile,"r") as f:
+		oldsha = hashlib.sha512(f.read()).hexdigest()
+	with open(newfile,"r") as f:
+		newsha = hashlib.sha512(f.read()).hexdigest()
+	with open("checksum.txt","r") as f:
+		# als nog geen checksum, huidige old gebruiken
+		storedsha = f.read() or oldsha
+	if oldsha == storedsha:
+		with open("checksum.txt","w") as f:
+			f.write(newsha + "\n")
+			print "Sane"
+	else:
+		print "Wrong old.xls"
+		sys.exit(-1)
 	print "Reading member lists...",
-	old = read_xls(sys.argv[1])
-	new = read_xls(sys.argv[2])
+	old = read_xls(oldfile)
+	new = read_xls(newfile)
 	print "Done"
 
 	print "Computing changes...",
 	plus, min = get_new_and_former_members(old, new)
 	changed = get_changed_members(old, new)
 	print "Done"
-	
+
 	print "Writing cvs files:"
 	plus_split = split_by_department(plus)
 	min_split = split_by_department(min)
 	changed_split = split_by_department(changed)
+	directory = time.strftime("historie.%F")
+	os.mkdir(directory, 0700)
 	for d in plus_split.keys():
 		print "%s-plus.csv\t%d" % (d, len(plus_split[d]))
-		write_csv("%s-plus.csv" % (d), plus_split[d])
+		write_csv("%s/%s-plus.csv" % (directory,d), plus_split[d])
 	for d in min_split.keys():
 		print "%s-min.csv\t%d" % (d, len(min_split[d]))
-		write_csv("%s-min.csv" % (d), min_split[d])
+		write_csv("%s/%s-min.csv" % (directory,d), min_split[d])
 	for d in changed_split.keys():
 		print "%s-upd.csv\t%d" % (d, len(changed_split[d]))
-		write_csv("%s-upd.csv" % (d), changed_split[d])
+		write_csv("%s/%s-upd.csv" % (directory,d), changed_split[d])
 
+	# XXX weghalen
+	sys.exit(0)
+	
 	# In de jnews tables gebruik ik het email adres als identifier voor de persoon.
 	# De lid id kan niet gebruikt worden vanwege mogelijke collisions door 2 
 	# onafhankelijke inschrijfmogenlijkheden (nieuwsbrief form en ledenadministratie).
