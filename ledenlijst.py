@@ -8,9 +8,16 @@ import time
 
 t = time.strftime("%s")
 
-DB_NAME = "joomla16"
-DB_USER = "joomla16"
-DB_PASSWD = "UsfrqXfcpUcEKbTp"
+#DB_NAME = "joomla16"
+#DB_USER = "joomla16"
+## trick to read keyfile from same dir as actual script, even when called via symlink
+#keyfile = os.path.dirname(os.path.realpath(__file__))+"/ledenlijst.key"
+#f = open(keyfile, "r")
+#DBPASSWD = f.readline().rstrip()
+#f.close()
+DB_NAME = "jddev"
+DB_USER = "jddev"
+DB_PASSWD = "eJzbNru5wmJrb7FM"
 
 # Geef alle belangrijke kolommen een naam
 LIDNUMMER = 0
