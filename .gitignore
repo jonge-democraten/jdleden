@@ -1,5 +1,6 @@
+*.swp
 *.key
 *.pyc
 checksum.txt
-invoer
-historie.*
+invoer/
+historie/

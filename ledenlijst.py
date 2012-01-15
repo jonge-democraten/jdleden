@@ -2,12 +2,14 @@
 
 import sys
 import os
+import errno
 import csv
 import MySQLdb
 import xlrd
 import time
 import hashlib
 
+debug = 0
 t = time.strftime("%s")
 
 #DB_NAME = "joomla16"
@@ -175,8 +177,17 @@ if __name__ == "__main__":
 		oldsha = hashlib.sha512(f.read()).hexdigest()
 	with open(newfile,"r") as f:
 		newsha = hashlib.sha512(f.read()).hexdigest()
-	with open("checksum.txt","r") as f:
-		# als nog geen checksum, huidige old gebruiken
+	try:
+		f = open("checksum.txt","r")
+	except IOError as e:
+		# als nog geen checksum.txt
+		if e.errno == errno.ENOENT:
+			print "Writing checksum...",
+			storedsha = oldsha
+		else:
+			raise
+	else:
+		# als lege checksum.txt
 		storedsha = f.read() or oldsha
 	if oldsha == storedsha:
 		with open("checksum.txt","w") as f:
@@ -199,8 +210,15 @@ if __name__ == "__main__":
 	plus_split = split_by_department(plus)
 	min_split = split_by_department(min)
 	changed_split = split_by_department(changed)
-	directory = time.strftime("historie.%F")
-	os.mkdir(directory, 0700)
+	directory = time.strftime("historie/%F")
+	# maak directories en negeer als al bestaat
+	try:
+		os.makedirs(directory, 0700)
+	except IOError as e:
+		if e.errno == errno.EEXIST:
+			pass
+		else:
+			raise
 	for d in plus_split.keys():
 		print "%s-plus.csv\t%d" % (d, len(plus_split[d]))
 		write_csv("%s/%s-plus.csv" % (directory,d), plus_split[d])
@@ -211,41 +229,45 @@ if __name__ == "__main__":
 		print "%s-upd.csv\t%d" % (d, len(changed_split[d]))
 		write_csv("%s/%s-upd.csv" % (directory,d), changed_split[d])
 
-	# XXX weghalen
-	sys.exit(0)
-	
 	# In de jnews tables gebruik ik het email adres als identifier voor de persoon.
 	# De lid id kan niet gebruikt worden vanwege mogelijke collisions door 2 
 	# onafhankelijke inschrijfmogenlijkheden (nieuwsbrief form en ledenadministratie).
 	db = MySQLdb.connect(user=DB_USER, passwd=DB_PASSWD, db=DB_NAME)
 	c = db.cursor()
-	c.execute("BEGIN")
 
 	# remove old members
 	for m in min:
-		#print("DELETE FROM j16_jnews_listssubscribers WHERE subscriber_id = (SELECT id FROM j16_jnews_subscribers WHERE 'email' = '%s')"% min[m][EMAIL]).encode("utf-8")
-		c.execute("DELETE FROM j16_jnews_listssubscribers WHERE subscriber_id = (SELECT id FROM j16_jnews_subscribers WHERE 'email' = '%s')"% min[m][EMAIL])
-
+		value = (t, min[m][EMAIL])
+		sql = "UPDATE IGNORE j16_jnews_listssubscribers SET unsubdate=%s, unsubscribe=1 WHERE subscriber_id = (SELECT id FROM j16_jnews_subscribers WHERE email=%s)"
+		c.execute(sql, value)
+		if debug:
+			for msg in c.messages:
+				print "DEBUG: ", msg
 	print "Removing complete"
 	
 	# update changed members
 	for id in changed.keys():
 		if (changed[id][NAAM] != old[id][NAAM] or changed[id][EMAIL] != old[id][EMAIL]):
 			value = (changed[id][NAAM], changed[id][EMAIL], old[id][EMAIL])
-			#print("UPDATE IGNORE j16_jnews_subscribers SET name='%s', email='%s' WHERE email='%s'"% value).encode("utf-8")
-			c.execute("UPDATE IGNORE j16_jnews_subscribers SET name='%s', email='%s' WHERE email='%s'"% value)
+			sql = "UPDATE IGNORE j16_jnews_subscribers SET name=%s, email=%s WHERE email=%s"
+			#print sql
+			c.execute(sql, value)
+			if debug:
+				for msg in c.messages:
+					print "DEBUG: ", msg
 	print "Changes complete"	
 	# Add new members	
 	for d in plus_split.keys():
 		for id in plus_split[d].keys():
 			value = (plus_split[d][id][NAAM], plus_split[d][id][EMAIL], 1, t)
-			#print("INSERT INTO j16_jnews_subscribers (name, email, confirmed, subscribe_date) VALUES (\"%s\", \"%s\", \"%s\", \"%s\") ON DUPLICATE KEY UPDATE id=id"% value).encode("utf-8")
-			c.execute("INSERT INTO j16_jnews_subscribers (name, email, confirmed, subscribe_date) VALUES (\"%s\", \"%s\", \"%s\", \"%s\") ON DUPLICATE KEY UPDATE id=id"% value)
+			sql = "INSERT INTO j16_jnews_subscribers (name, email, confirmed, subscribe_date) VALUES (%s, %s, %s, %s) ON DUPLICATE KEY UPDATE id=id"
+			#print sql
+			c.execute(sql, value)
+			if debug:
+				for msg in c.messages:
+					print "DEBUG: ", msg
 	print "Adding complete"
-	c.execute("COMMIT")
-#	c.execute("ROLLBACK")
 	
-	c.execute("BEGIN")
 	# Add the new members to their department
 	for d in plus_split.keys():
 #		values = [(db.escape_string(plus_split[d][id][EMAIL]), db.escape_string("Digizine")) for id in plus_split[d].keys()]
@@ -253,20 +275,24 @@ if __name__ == "__main__":
 		for v in values:
 			
 			try:
-				sql = """INSERT INTO j16_jnews_listssubscribers (subscriber_id, list_id) VALUES ((SELECT id FROM j16_jnews_subscribers WHERE email = \"%s\" LIMIT 1), (SELECT id FROM j16_jnews_lists WHERE list_name = \"%s\")) ON DUPLICATE KEY UPDATE list_id = list_id""" %(v[0],v[1])
-				c.execute(sql)
+				value = (v[0], v[1])
+				sql = "INSERT INTO j16_jnews_listssubscribers (subscriber_id, list_id) VALUES ((SELECT id FROM j16_jnews_subscribers WHERE email=%s LIMIT 1), (SELECT id FROM j16_jnews_lists WHERE list_name=%s)) ON DUPLICATE KEY UPDATE list_id = list_id"
+				#print sql
+				c.execute(sql, value)
+				if debug:
+					for msg in c.messages:
+						print "DEBUG: ", msg
 				if v[2] != "Nieuwsbrief Buitenland":
-					sql = """INSERT INTO j16_jnews_listssubscribers (subscriber_id, list_id) VALUES ((SELECT id FROM j16_jnews_subscribers WHERE email = \"%s\" LIMIT 1), (SELECT id FROM j16_jnews_lists WHERE list_name = \"%s\")) ON DUPLICATE KEY UPDATE list_id = list_id""" %(v[0],v[2])
-				c.execute(sql)
+					value = (v[0], v[2])
+					sql = "INSERT INTO j16_jnews_listssubscribers (subscriber_id, list_id) VALUES ((SELECT id FROM j16_jnews_subscribers WHERE email=%s LIMIT 1), (SELECT id FROM j16_jnews_lists WHERE list_name=%s)) ON DUPLICATE KEY UPDATE list_id = list_id"
+					#print sql
+					c.execute(sql, value)
+					if debug:
+						for msg in c.messages:
+							print "DEBUG: ", msg
 			except:
 				print "Error executing \"%s\"" %sql
-				c.execute("ROLLBACK")
-				db.close()
-				sys.exit()
-	
-
-	c.execute("COMMIT")
-#	c.execute("ROLLBACK")
+				print "Handmatige interventie voor bovenstaande query is nodig"
 	print "Added to mailinglists"	
 
 
