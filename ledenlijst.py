@@ -9,7 +9,8 @@ import xlrd
 import time
 import hashlib
 
-debug = 0
+debug = 1
+dryrun = 0
 t = time.strftime("%s")
 
 #DB_NAME = "joomla16"
@@ -180,18 +181,19 @@ if __name__ == "__main__":
 	try:
 		f = open("checksum.txt","r")
 	except IOError as e:
-		# als nog geen checksum.txt
+		# als nog geen checksum.txt, doe alsof er oldsha in stond
 		if e.errno == errno.ENOENT:
 			print "Writing checksum...",
 			storedsha = oldsha
 		else:
 			raise
 	else:
-		# als lege checksum.txt
-		storedsha = f.read() or oldsha
+		# als lege checksum.txt, doe alsof er oldsha in stond
+		storedsha = f.readline().rstrip() or oldsha
 	if oldsha == storedsha:
 		with open("checksum.txt","w") as f:
-			f.write(newsha + "\n")
+			# append newline to mimic sha512sum behaviour
+			f.write(newsha+"\n")
 			print "Sane"
 	else:
 		print "Wrong old.xls"
@@ -239,7 +241,10 @@ if __name__ == "__main__":
 	for m in min:
 		value = (t, min[m][EMAIL])
 		sql = "UPDATE IGNORE j16_jnews_listssubscribers SET unsubdate=%s, unsubscribe=1 WHERE subscriber_id = (SELECT id FROM j16_jnews_subscribers WHERE email=%s)"
-		c.execute(sql, value)
+		if dryrun:
+			print (sql % value).encode("utf-8")
+		else:
+			c.execute(sql, value)
 		if debug:
 			for msg in c.messages:
 				print "DEBUG: ", msg
@@ -250,8 +255,10 @@ if __name__ == "__main__":
 		if (changed[id][NAAM] != old[id][NAAM] or changed[id][EMAIL] != old[id][EMAIL]):
 			value = (changed[id][NAAM], changed[id][EMAIL], old[id][EMAIL])
 			sql = "UPDATE IGNORE j16_jnews_subscribers SET name=%s, email=%s WHERE email=%s"
-			#print sql
-			c.execute(sql, value)
+			if dryrun:
+				print (sql % value).encode("utf-8")
+			else:
+				c.execute(sql, value)
 			if debug:
 				for msg in c.messages:
 					print "DEBUG: ", msg
@@ -261,8 +268,10 @@ if __name__ == "__main__":
 		for id in plus_split[d].keys():
 			value = (plus_split[d][id][NAAM], plus_split[d][id][EMAIL], 1, t)
 			sql = "INSERT INTO j16_jnews_subscribers (name, email, confirmed, subscribe_date) VALUES (%s, %s, %s, %s) ON DUPLICATE KEY UPDATE id=id"
-			#print sql
-			c.execute(sql, value)
+			if dryrun:
+				print (sql % value).encode("utf-8")
+			else:
+				c.execute(sql, value)
 			if debug:
 				for msg in c.messages:
 					print "DEBUG: ", msg
@@ -277,16 +286,20 @@ if __name__ == "__main__":
 			try:
 				value = (v[0], v[1])
 				sql = "INSERT INTO j16_jnews_listssubscribers (subscriber_id, list_id) VALUES ((SELECT id FROM j16_jnews_subscribers WHERE email=%s LIMIT 1), (SELECT id FROM j16_jnews_lists WHERE list_name=%s)) ON DUPLICATE KEY UPDATE list_id = list_id"
-				#print sql
-				c.execute(sql, value)
+				if dryrun:
+					print (sql % value).encode("utf-8")
+				else:
+					c.execute(sql, value)
 				if debug:
 					for msg in c.messages:
 						print "DEBUG: ", msg
 				if v[2] != "Nieuwsbrief Buitenland":
 					value = (v[0], v[2])
 					sql = "INSERT INTO j16_jnews_listssubscribers (subscriber_id, list_id) VALUES ((SELECT id FROM j16_jnews_subscribers WHERE email=%s LIMIT 1), (SELECT id FROM j16_jnews_lists WHERE list_name=%s)) ON DUPLICATE KEY UPDATE list_id = list_id"
-					#print sql
-					c.execute(sql, value)
+					if dryrun:
+						print (sql % value).encode("utf-8")
+					else:
+						c.execute(sql, value)
 					if debug:
 						for msg in c.messages:
 							print "DEBUG: ", msg
