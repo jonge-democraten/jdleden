@@ -77,21 +77,6 @@ AFDELINGEN = {
 }
 
 
-# read a csv file from disk.
-def read_csv(f, header=None):
-	# Try to guess the csv file format
-	file = open(f)
-	dialect = csv.Sniffer().sniff(file.read(4096))
-	file.seek(0)
-	# Lees de data
-	reader = csv.reader(file, dialect)
-	grid = [r for r in reader][1:] # Remove first row (header)
-	# Maak de leden toegankelijk op lidnummer
-	leden = {}
-	for r in grid:
-		leden[int(r[LIDNUMMER])] = r
-	return leden
-
 # Read xls file from disk
 def read_xls(f):
 	book = xlrd.open_workbook(f)
