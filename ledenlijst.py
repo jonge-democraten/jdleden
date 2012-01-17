@@ -164,6 +164,16 @@ def split_by_department(members):
 			s[d] = dict()
 		s[d][id] = members[id]
 	return s
+
+def dosql(c, sql, value):
+	# DRY - use one function and don't repeat code
+	if dryrun:
+		print (sql % value).encode("utf-8")
+	else:
+		c.execute(sql, value)
+	if debug:
+		for msg in c.messages:
+			print "DEBUG: ", msg
 			
 
 if __name__ == "__main__":
@@ -241,13 +251,7 @@ if __name__ == "__main__":
 	for m in min:
 		value = (t, min[m][EMAIL])
 		sql = "UPDATE IGNORE j16_jnews_listssubscribers SET unsubdate=%s, unsubscribe=1 WHERE subscriber_id = (SELECT id FROM j16_jnews_subscribers WHERE email=%s)"
-		if dryrun:
-			print (sql % value).encode("utf-8")
-		else:
-			c.execute(sql, value)
-		if debug:
-			for msg in c.messages:
-				print "DEBUG: ", msg
+		dosql(c, sql, value)
 	print "Removing complete"
 	
 	# update changed members
@@ -255,26 +259,15 @@ if __name__ == "__main__":
 		if (changed[id][NAAM] != old[id][NAAM] or changed[id][EMAIL] != old[id][EMAIL]):
 			value = (changed[id][NAAM], changed[id][EMAIL], old[id][EMAIL])
 			sql = "UPDATE IGNORE j16_jnews_subscribers SET name=%s, email=%s WHERE email=%s"
-			if dryrun:
-				print (sql % value).encode("utf-8")
-			else:
-				c.execute(sql, value)
-			if debug:
-				for msg in c.messages:
-					print "DEBUG: ", msg
+			dosql(c, sql, value)
 	print "Changes complete"	
+
 	# Add new members	
 	for d in plus_split.keys():
 		for id in plus_split[d].keys():
 			value = (plus_split[d][id][NAAM], plus_split[d][id][EMAIL], 1, t)
 			sql = "INSERT INTO j16_jnews_subscribers (name, email, confirmed, subscribe_date) VALUES (%s, %s, %s, %s) ON DUPLICATE KEY UPDATE id=id"
-			if dryrun:
-				print (sql % value).encode("utf-8")
-			else:
-				c.execute(sql, value)
-			if debug:
-				for msg in c.messages:
-					print "DEBUG: ", msg
+			dosql(c, sql, value)
 	print "Adding complete"
 	
 	# Add the new members to their department
@@ -286,23 +279,11 @@ if __name__ == "__main__":
 			try:
 				value = (v[0], v[1])
 				sql = "INSERT INTO j16_jnews_listssubscribers (subscriber_id, list_id) VALUES ((SELECT id FROM j16_jnews_subscribers WHERE email=%s LIMIT 1), (SELECT id FROM j16_jnews_lists WHERE list_name=%s)) ON DUPLICATE KEY UPDATE list_id = list_id"
-				if dryrun:
-					print (sql % value).encode("utf-8")
-				else:
-					c.execute(sql, value)
-				if debug:
-					for msg in c.messages:
-						print "DEBUG: ", msg
+				dosql(c, sql, value)
 				if v[2] != "Nieuwsbrief Buitenland":
 					value = (v[0], v[2])
 					sql = "INSERT INTO j16_jnews_listssubscribers (subscriber_id, list_id) VALUES ((SELECT id FROM j16_jnews_subscribers WHERE email=%s LIMIT 1), (SELECT id FROM j16_jnews_lists WHERE list_name=%s)) ON DUPLICATE KEY UPDATE list_id = list_id"
-					if dryrun:
-						print (sql % value).encode("utf-8")
-					else:
-						c.execute(sql, value)
-					if debug:
-						for msg in c.messages:
-							print "DEBUG: ", msg
+					dosql(c, sql, value)
 			except:
 				print "Error executing \"%s\"" %sql
 				print "Handmatige interventie voor bovenstaande query is nodig"
