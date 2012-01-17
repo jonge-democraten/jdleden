@@ -222,7 +222,7 @@ if __name__ == "__main__":
 	plus_split = split_by_department(plus)
 	min_split = split_by_department(min)
 	changed_split = split_by_department(changed)
-	directory = time.strftime("historie/%F")
+	directory = time.strftime("historie/%F %T")
 	# maak directories en negeer als al bestaat
 	try:
 		os.makedirs(directory, 0700)
@@ -255,11 +255,20 @@ if __name__ == "__main__":
 	print "Removing complete"
 	
 	# update changed members
+	moved = {}
 	for id in changed.keys():
 		if (changed[id][NAAM] != old[id][NAAM] or changed[id][EMAIL] != old[id][EMAIL]):
 			value = (changed[id][NAAM], changed[id][EMAIL], old[id][EMAIL])
 			sql = "UPDATE IGNORE j16_jnews_subscribers SET name=%s, email=%s WHERE email=%s"
 			dosql(c, sql, value)
+		# check if member has moved to a new department
+		if (changed[id][POSTCODE] != old[id][POSTCODE]):
+			# only resubscribe if department actually changes
+			newdept = find_department(parse_postcode(changed[id][POSTCODE]))
+			olddept = find_department(parse_postcode(old[id][POSTCODE]))
+			if (newdept != olddept):
+				moved[id] = changed[id]
+	moved_split = split_by_department(moved)
 	print "Changes complete"	
 
 	# Add new members	
@@ -275,7 +284,6 @@ if __name__ == "__main__":
 #		values = [(db.escape_string(plus_split[d][id][EMAIL]), db.escape_string("Digizine")) for id in plus_split[d].keys()]
 		values = [(db.escape_string(plus_split[d][id][EMAIL]), db.escape_string("Digizine"), db.escape_string("Nieuwsbrief "+d)) for id in plus_split[d].keys()]
 		for v in values:
-			
 			try:
 				value = (v[0], v[1])
 				sql = "INSERT INTO j16_jnews_listssubscribers (subscriber_id, list_id) VALUES ((SELECT id FROM j16_jnews_subscribers WHERE email=%s LIMIT 1), (SELECT id FROM j16_jnews_lists WHERE list_name=%s)) ON DUPLICATE KEY UPDATE list_id = list_id"
@@ -287,6 +295,28 @@ if __name__ == "__main__":
 			except:
 				print "Error executing \"%s\"" %sql
 				print "Handmatige interventie voor bovenstaande query is nodig"
+	# Unsubscribe moved members from old department and subscribe to new department
+	# FIXME DRY
+	for d in moved_split.keys():
+		values = [(db.escape_string(moved_split[d][id][EMAIL]), db.escape_string("Nieuwsbrief "+d)) for id in moved_split[d].keys()]
+		for v in values:
+			try:
+				# unsubscribe old
+				olddept = find_department(parse_postcode(old[id][POSTCODE]))
+				oldlist = "Nieuwsbrief "+olddept
+				value = (t, oldlist, v[0])
+				sql = "UPDATE IGNORE j16_jnews_listssubscribers SET unsubdate=%s, unsubscribe=1 WHERE list_id IN (SELECT id FROM j16_jnews_lists WHERE list_name=%s) AND subscriber_id = (SELECT id FROM j16_jnews_subscribers WHERE email=%s)"
+				dosql(c, sql, value)
+			except:
+				print "Error executing: %s" % (sql % value)
+			try:
+				# subscribe new
+				if v[1] != "Nieuwsbrief Buitenland":
+					value = (v[0], v[1], t)
+					sql = "INSERT INTO j16_jnews_listssubscribers (subscriber_id, list_id, subdate) VALUES ((SELECT id FROM j16_jnews_subscribers WHERE email=%s LIMIT 1), (SELECT id FROM j16_jnews_lists WHERE list_name=%s), %s) ON DUPLICATE KEY UPDATE list_id = list_id"
+					dosql(c, sql, value)
+			except:
+				print "Error executing: %s" % (sql % value)
 	print "Added to mailinglists"	
 
 
