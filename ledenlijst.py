@@ -9,9 +9,8 @@ import xlrd
 import time
 import hashlib
 import ConfigParser
-import getopt
+from optparse import OptionParser
 
-debug = True
 now = time.strftime("%s")
 
 # trick to read config from same dir as actual script, even when called via symlink
@@ -119,11 +118,6 @@ def get_changed_members(oldlist, newlist):
 	changed = filter(lambda id: oldlist[id] != newlist[id], intersect)
 	return dict([(id, newlist[id]) for id in changed])
 
-
-def usage():
-	# FIXME expand usage info
-	print "Usage: %s old.xls new.xls" % (sys.argv[0])
-
 def find_department(pc):
 	if not pc:
 		return "Buitenland"
@@ -148,57 +142,42 @@ def split_by_department(members):
 
 def dosql(c, sql, value):
 	# DRY - use one function and don't repeat code
-	if dryrun:
+	if options.dryrun:
 		print (sql % value).encode("utf-8")
 	else:
 		c.execute(sql, value)
-	if debug:
+	if options.debug:
 		for msg in c.messages:
 			print "DEBUG: ", msg
 			
 
 if __name__ == "__main__":
-	# read command-line options
-	try:
-		opts, args = getopt.getopt(sys.argv[1:], "hjnx")
-	except getopt.GetoptError, err:
-		print str(err)
-		usage()
-		sys.exit(2)
-	# defaults
-	dryrun = False
-	only_jnews = False
-	only_excel = False
-	# read options
-	for o, a in opts:
-		if o == "-h":
-			usage()
-			sys.exit()
-		elif o == "-j":
-			only_jnews = True
-		elif o == "-n":
-			dryrun = True
-		elif o == "-x":
-			only_excel = True
-		else:
-			assert False, "unhandled option"
-	# check sanity
-	if only_jnews and only_excel:
-			print "invalid option combination"
-			usage()
-			sys.exit(2)
+	# define command-line options
+	usage = """\
+Usage: %prog [options] arguments
+  in regular and jNews-only-mode, arguments is 2 files: old.xls new.xls
+  in Excel-only-mode, arguments is 1 file: new.xls"""
+	parser = OptionParser(usage)
+	parser.add_option("-v", "--verbose", action="store_true", dest="debug",
+					help="produce debug output")
+	parser.add_option("-n", "--dryrun", action="store_true", dest="dryrun",
+					help="don't execute any SQL")
+	parser.add_option("-j", "--jnews", action="store_true", dest="only_jnews",
+					help="only update jNews-subscriptions")
+	parser.add_option("-x", "--excel", action="store_true", dest="only_excel",
+					help="only generate Excel-files per department")
+	# read options and check sanity
+	(options, args) = parser.parse_args()
+	if options.only_jnews and options.only_excel:
+			parser.error("options -j and -x are mutually exclusive")
 	# when running in only_excel-mode, require 1 arg
-	elif only_excel:
+	elif options.only_excel:
 		if len(args) != 1:
-			print "need 1 arg"
-			usage()
-			sys.exit(2)
+			parser.error("need 1 argument: new.xls")
 	# when running in regular- or only_jnews-mode, require 2 args and check sanity
 	else:
 		if len(args) != 2:
-			print "need 2 args"
-			usage()
-			sys.exit(2)
+			parser.error("need 2 arguments: old.xls new.xls")
 		print "Verifying sanity...",
 		csumfile = os.path.join(scriptdir, "checksum.txt")
 		oldfile = args[0]
@@ -229,10 +208,10 @@ if __name__ == "__main__":
 			sys.exit(1)
 	
 	# FIXME xlwt code should go somewhere around here (before SQL-code)
-	if not only_jnews:
+	if not options.only_jnews:
 		print "placeholder xlwt"
 		
-	if not only_excel:
+	if not options.only_excel:
 		print "Reading member lists...",
 		old = read_xls(oldfile)
 		new = read_xls(newfile)
