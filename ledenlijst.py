@@ -9,9 +9,9 @@ import xlrd
 import time
 import hashlib
 import ConfigParser
+import getopt
 
-debug = 0
-dryrun = 0
+debug = True
 now = time.strftime("%s")
 
 # trick to read config from same dir as actual script, even when called via symlink
@@ -121,6 +121,7 @@ def get_changed_members(oldlist, newlist):
 
 
 def usage():
+	# FIXME expand usage info
 	print "Usage: %s old.xls new.xls" % (sys.argv[0])
 
 def find_department(pc):
@@ -157,146 +158,190 @@ def dosql(c, sql, value):
 			
 
 if __name__ == "__main__":
-	if len(sys.argv) != 3:
+	# read command-line options
+	try:
+		opts, args = getopt.getopt(sys.argv[1:], "hjnx")
+	except getopt.GetoptError, err:
+		print str(err)
 		usage()
-		sys.exit(-1)
-
-	print "Verifying sanity...",
-	oldfile = sys.argv[1]
-	newfile = sys.argv[2]
-	with open(oldfile,"r") as f:
-		oldsha = hashlib.sha512(f.read()).hexdigest()
-	with open(newfile,"r") as f:
-		newsha = hashlib.sha512(f.read()).hexdigest()
-	try:
-		f = open("checksum.txt","r")
-	except IOError as e:
-		# als nog geen checksum.txt, doe alsof er oldsha in stond
-		if e.errno == errno.ENOENT:
-			print "Writing checksum...",
-			storedsha = oldsha
+		sys.exit(2)
+	# defaults
+	dryrun = False
+	only_jnews = False
+	only_excel = False
+	# read options
+	for o, a in opts:
+		if o == "-h":
+			usage()
+			sys.exit()
+		elif o == "-j":
+			only_jnews = True
+		elif o == "-n":
+			dryrun = True
+		elif o == "-x":
+			only_excel = True
 		else:
-			raise
+			assert False, "unhandled option"
+	# check sanity
+	if only_jnews and only_excel:
+			print "invalid option combination"
+			usage()
+			sys.exit(2)
+	# when running in only_excel-mode, require 1 arg
+	elif only_excel:
+		if len(args) != 1:
+			print "need 1 arg"
+			usage()
+			sys.exit(2)
+	# when running in regular- or only_jnews-mode, require 2 args and check sanity
 	else:
-		# als lege checksum.txt, doe alsof er oldsha in stond
-		storedsha = f.readline().rstrip() or oldsha
-	if oldsha == storedsha:
-		with open("checksum.txt","w") as f:
-			# append newline to mimic sha512sum behaviour
-			f.write(newsha+"\n")
-			print "Sane"
-	else:
-		print "Wrong old.xls"
-		sys.exit(-1)
-	print "Reading member lists...",
-	old = read_xls(oldfile)
-	new = read_xls(newfile)
-	print "Done"
-
-	print "Computing changes...",
-	plus, min = get_new_and_former_members(old, new)
-	changed = get_changed_members(old, new)
-	print "Done"
-
-	print "Writing cvs files:"
-	plus_split = split_by_department(plus)
-	min_split = split_by_department(min)
-	changed_split = split_by_department(changed)
-	directory = time.strftime("historie/%F %T")
-	# maak directories en negeer als al bestaat
-	try:
-		os.makedirs(directory, 0700)
-	except IOError as e:
-		if e.errno == errno.EEXIST:
-			pass
+		if len(args) != 2:
+			print "need 2 args"
+			usage()
+			sys.exit(2)
+		print "Verifying sanity...",
+		csumfile = os.path.join(scriptdir, "checksum.txt")
+		oldfile = args[0]
+		newfile = args[1]
+		with open(oldfile,"r") as f:
+			oldsha = hashlib.sha512(f.read()).hexdigest()
+		with open(newfile,"r") as f:
+			newsha = hashlib.sha512(f.read()).hexdigest()
+		try:
+			f = open(csumfile,"r")
+		except IOError as e:
+			# als nog geen checksum.txt, doe alsof er oldsha in stond
+			if e.errno == errno.ENOENT:
+				print "Writing checksum...",
+				storedsha = oldsha
+			else:
+				raise
 		else:
-			raise
-	for d in plus_split.keys():
-		print "%s-plus.csv\t%d" % (d, len(plus_split[d]))
-		write_csv("%s/%s-plus.csv" % (directory,d), plus_split[d])
-	for d in min_split.keys():
-		print "%s-min.csv\t%d" % (d, len(min_split[d]))
-		write_csv("%s/%s-min.csv" % (directory,d), min_split[d])
-	for d in changed_split.keys():
-		print "%s-upd.csv\t%d" % (d, len(changed_split[d]))
-		write_csv("%s/%s-upd.csv" % (directory,d), changed_split[d])
-
-	# In de jnews tables gebruik ik het email adres als identifier voor de persoon.
-	# De lid id kan niet gebruikt worden vanwege mogelijke collisions door 2 
-	# onafhankelijke inschrijfmogenlijkheden (nieuwsbrief form en ledenadministratie).
-	db = MySQLdb.connect(user=dbcfg["user"], passwd=dbcfg["password"], db=dbcfg["name"])
-	c = db.cursor()
-
-	# remove old members
-	for m in min:
-		value = (now, min[m][EMAIL])
-		sql = "UPDATE IGNORE j16_jnews_listssubscribers SET unsubdate=%s, unsubscribe=1 WHERE subscriber_id = (SELECT id FROM j16_jnews_subscribers WHERE email=%s)"
-		dosql(c, sql, value)
-	print "Removing complete"
+			# als lege checksum.txt, doe alsof er oldsha in stond
+			storedsha = f.readline().rstrip() or oldsha
+		if oldsha == storedsha:
+			with open(csumfile,"w") as f:
+				# append newline to mimic sha512sum behaviour
+				f.write(newsha+"\n")
+				print "Sane"
+		else:
+			print "Wrong old.xls"
+			sys.exit(1)
 	
-	# update changed members
-	moved = {}
-	for id in changed.keys():
-		if (changed[id][NAAM] != old[id][NAAM] or changed[id][EMAIL] != old[id][EMAIL]):
-			value = (changed[id][NAAM], changed[id][EMAIL], old[id][EMAIL])
-			sql = "UPDATE IGNORE j16_jnews_subscribers SET name=%s, email=%s WHERE email=%s"
-			dosql(c, sql, value)
-		# check if member has moved to a new department
-		if (changed[id][POSTCODE] != old[id][POSTCODE]):
-			# only resubscribe if department actually changes
-			newdept = find_department(parse_postcode(changed[id][POSTCODE]))
-			olddept = find_department(parse_postcode(old[id][POSTCODE]))
-			if (newdept != olddept):
-				moved[id] = changed[id]
-	moved_split = split_by_department(moved)
-	print "Changes complete"	
-
-	# Add new members	
-	for d in plus_split.keys():
-		for id in plus_split[d].keys():
-			value = (plus_split[d][id][NAAM], plus_split[d][id][EMAIL], 1, now)
-			sql = "INSERT INTO j16_jnews_subscribers (name, email, confirmed, subscribe_date) VALUES (%s, %s, %s, %s) ON DUPLICATE KEY UPDATE id=id"
-			dosql(c, sql, value)
-	print "Adding complete"
+	# FIXME xlwt code should go somewhere around here (before SQL-code)
+	if not only_jnews:
+		print "placeholder xlwt"
+		
+	if not only_excel:
+		print "Reading member lists...",
+		old = read_xls(oldfile)
+		new = read_xls(newfile)
+		print "Done"
 	
-	# Add the new members to their department
-	for d in plus_split.keys():
-#		values = [(db.escape_string(plus_split[d][id][EMAIL]), db.escape_string("Digizine")) for id in plus_split[d].keys()]
-		values = [(db.escape_string(plus_split[d][id][EMAIL]), db.escape_string("Digizine"), db.escape_string("Nieuwsbrief "+d)) for id in plus_split[d].keys()]
-		for v in values:
-			try:
-				value = (v[0], v[1])
-				sql = "INSERT INTO j16_jnews_listssubscribers (subscriber_id, list_id) VALUES ((SELECT id FROM j16_jnews_subscribers WHERE email=%s LIMIT 1), (SELECT id FROM j16_jnews_lists WHERE list_name=%s)) ON DUPLICATE KEY UPDATE list_id = list_id"
+		print "Computing changes...",
+		plus, min = get_new_and_former_members(old, new)
+		changed = get_changed_members(old, new)
+		print "Done"
+	
+		print "Writing cvs files:"
+		plus_split = split_by_department(plus)
+		min_split = split_by_department(min)
+		changed_split = split_by_department(changed)
+		directory = time.strftime("historie/%F %T")
+		# maak directories en negeer als al bestaat
+		try:
+			os.makedirs(directory, 0700)
+		except IOError as e:
+			if e.errno == errno.EEXIST:
+				pass
+			else:
+				raise
+		for d in plus_split.keys():
+			print "%s-plus.csv\t%d" % (d, len(plus_split[d]))
+			write_csv("%s/%s-plus.csv" % (directory,d), plus_split[d])
+		for d in min_split.keys():
+			print "%s-min.csv\t%d" % (d, len(min_split[d]))
+			write_csv("%s/%s-min.csv" % (directory,d), min_split[d])
+		for d in changed_split.keys():
+			print "%s-upd.csv\t%d" % (d, len(changed_split[d]))
+			write_csv("%s/%s-upd.csv" % (directory,d), changed_split[d])
+	
+		# In de jnews tables gebruik ik het email adres als identifier voor de persoon.
+		# De lid id kan niet gebruikt worden vanwege mogelijke collisions door 2 
+		# onafhankelijke inschrijfmogenlijkheden (nieuwsbrief form en ledenadministratie).
+		db = MySQLdb.connect(user=dbcfg["user"], passwd=dbcfg["password"], db=dbcfg["name"])
+		c = db.cursor()
+	
+		# remove old members
+		for m in min:
+			value = (now, min[m][EMAIL])
+			sql = "UPDATE IGNORE j16_jnews_listssubscribers SET unsubdate=%s, unsubscribe=1 WHERE subscriber_id = (SELECT id FROM j16_jnews_subscribers WHERE email=%s)"
+			dosql(c, sql, value)
+		print "Removing complete"
+		
+		# update changed members
+		moved = {}
+		for id in changed.keys():
+			if (changed[id][NAAM] != old[id][NAAM] or changed[id][EMAIL] != old[id][EMAIL]):
+				value = (changed[id][NAAM], changed[id][EMAIL], old[id][EMAIL])
+				sql = "UPDATE IGNORE j16_jnews_subscribers SET name=%s, email=%s WHERE email=%s"
 				dosql(c, sql, value)
-				if v[2] != "Nieuwsbrief Buitenland":
-					value = (v[0], v[2])
+			# check if member has moved to a new department
+			if (changed[id][POSTCODE] != old[id][POSTCODE]):
+				# only resubscribe if department actually changes
+				newdept = find_department(parse_postcode(changed[id][POSTCODE]))
+				olddept = find_department(parse_postcode(old[id][POSTCODE]))
+				if (newdept != olddept):
+					moved[id] = changed[id]
+		moved_split = split_by_department(moved)
+		print "Changes complete"	
+	
+		# Add new members	
+		for d in plus_split.keys():
+			for id in plus_split[d].keys():
+				value = (plus_split[d][id][NAAM], plus_split[d][id][EMAIL], 1, now)
+				sql = "INSERT INTO j16_jnews_subscribers (name, email, confirmed, subscribe_date) VALUES (%s, %s, %s, %s) ON DUPLICATE KEY UPDATE id=id"
+				dosql(c, sql, value)
+		print "Adding complete"
+		
+		# Add the new members to their department
+		for d in plus_split.keys():
+	#		values = [(db.escape_string(plus_split[d][id][EMAIL]), db.escape_string("Digizine")) for id in plus_split[d].keys()]
+			values = [(db.escape_string(plus_split[d][id][EMAIL]), db.escape_string("Digizine"), db.escape_string("Nieuwsbrief "+d)) for id in plus_split[d].keys()]
+			for v in values:
+				try:
+					value = (v[0], v[1])
 					sql = "INSERT INTO j16_jnews_listssubscribers (subscriber_id, list_id) VALUES ((SELECT id FROM j16_jnews_subscribers WHERE email=%s LIMIT 1), (SELECT id FROM j16_jnews_lists WHERE list_name=%s)) ON DUPLICATE KEY UPDATE list_id = list_id"
 					dosql(c, sql, value)
-			except:
-				print "Error executing \"%s\"" %sql
-				print "Handmatige interventie voor bovenstaande query is nodig"
-	# Unsubscribe moved members from old department and subscribe to new department
-	# FIXME DRY
-	for d in moved_split.keys():
-		values = [(db.escape_string(moved_split[d][id][EMAIL]), db.escape_string("Nieuwsbrief "+d)) for id in moved_split[d].keys()]
-		for v in values:
-			try:
-				# unsubscribe old
-				olddept = find_department(parse_postcode(old[id][POSTCODE]))
-				oldlist = "Nieuwsbrief "+olddept
-				value = (now, oldlist, v[0])
-				sql = "UPDATE IGNORE j16_jnews_listssubscribers SET unsubdate=%s, unsubscribe=1 WHERE list_id IN (SELECT id FROM j16_jnews_lists WHERE list_name=%s) AND subscriber_id = (SELECT id FROM j16_jnews_subscribers WHERE email=%s)"
-				dosql(c, sql, value)
-			except:
-				print "Error executing: %s" % (sql % value)
-			try:
-				# subscribe new
-				if v[1] != "Nieuwsbrief Buitenland":
-					value = (v[0], v[1], now)
-					sql = "INSERT INTO j16_jnews_listssubscribers (subscriber_id, list_id, subdate) VALUES ((SELECT id FROM j16_jnews_subscribers WHERE email=%s LIMIT 1), (SELECT id FROM j16_jnews_lists WHERE list_name=%s), %s) ON DUPLICATE KEY UPDATE list_id = list_id"
+					if v[2] != "Nieuwsbrief Buitenland":
+						value = (v[0], v[2])
+						sql = "INSERT INTO j16_jnews_listssubscribers (subscriber_id, list_id) VALUES ((SELECT id FROM j16_jnews_subscribers WHERE email=%s LIMIT 1), (SELECT id FROM j16_jnews_lists WHERE list_name=%s)) ON DUPLICATE KEY UPDATE list_id = list_id"
+						dosql(c, sql, value)
+				except:
+					print "Error executing \"%s\"" %sql
+					print "Handmatige interventie voor bovenstaande query is nodig"
+		# Unsubscribe moved members from old department and subscribe to new department
+		# FIXME DRY
+		for d in moved_split.keys():
+			values = [(db.escape_string(moved_split[d][id][EMAIL]), db.escape_string("Nieuwsbrief "+d)) for id in moved_split[d].keys()]
+			for v in values:
+				try:
+					# unsubscribe old
+					olddept = find_department(parse_postcode(old[id][POSTCODE]))
+					oldlist = "Nieuwsbrief "+olddept
+					value = (now, oldlist, v[0])
+					sql = "UPDATE IGNORE j16_jnews_listssubscribers SET unsubdate=%s, unsubscribe=1 WHERE list_id IN (SELECT id FROM j16_jnews_lists WHERE list_name=%s) AND subscriber_id = (SELECT id FROM j16_jnews_subscribers WHERE email=%s)"
 					dosql(c, sql, value)
-			except:
-				print "Error executing: %s" % (sql % value)
-	print "Added to mailinglists"	
+				except:
+					print "Error executing: %s" % (sql % value)
+				try:
+					# subscribe new
+					if v[1] != "Nieuwsbrief Buitenland":
+						value = (v[0], v[1], now)
+						sql = "INSERT INTO j16_jnews_listssubscribers (subscriber_id, list_id, subdate) VALUES ((SELECT id FROM j16_jnews_subscribers WHERE email=%s LIMIT 1), (SELECT id FROM j16_jnews_lists WHERE list_name=%s), %s) ON DUPLICATE KEY UPDATE list_id = list_id"
+						dosql(c, sql, value)
+				except:
+					print "Error executing: %s" % (sql % value)
+		print "Added to mailinglists"	
 
 
