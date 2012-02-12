@@ -224,12 +224,12 @@ Usage: %prog [options] arguments
 			else:
 				raise
 		else:
-			# als lege checksum.txt, doe alsof er oldsha in stond
-			storedsha = f.readline().rstrip() or oldsha
+			# read sha512sum-compatible checksum-file
+			storedsha = f.readline().split()[0]
 		if oldsha == storedsha:
 			with open(csumfile,"w") as f:
-				# append newline to mimic sha512sum behaviour
-				f.write(newsha+"\n")
+				# write sha512sum-compatible checksum-file
+				f.write("%s  %s\n" % (newsha, newfile))
 				logger.info("Input files are sane")
 		else:
 			logger.critical("Wrong old.xls")
