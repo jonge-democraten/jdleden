@@ -12,7 +12,7 @@ import ConfigParser
 
 debug = 0
 dryrun = 0
-t = time.strftime("%s")
+now = time.strftime("%s")
 
 # trick to read config from same dir as actual script, even when called via symlink
 scriptdir = os.path.dirname(os.path.realpath(__file__))
@@ -229,7 +229,7 @@ if __name__ == "__main__":
 
 	# remove old members
 	for m in min:
-		value = (t, min[m][EMAIL])
+		value = (now, min[m][EMAIL])
 		sql = "UPDATE IGNORE j16_jnews_listssubscribers SET unsubdate=%s, unsubscribe=1 WHERE subscriber_id = (SELECT id FROM j16_jnews_subscribers WHERE email=%s)"
 		dosql(c, sql, value)
 	print "Removing complete"
@@ -254,7 +254,7 @@ if __name__ == "__main__":
 	# Add new members	
 	for d in plus_split.keys():
 		for id in plus_split[d].keys():
-			value = (plus_split[d][id][NAAM], plus_split[d][id][EMAIL], 1, t)
+			value = (plus_split[d][id][NAAM], plus_split[d][id][EMAIL], 1, now)
 			sql = "INSERT INTO j16_jnews_subscribers (name, email, confirmed, subscribe_date) VALUES (%s, %s, %s, %s) ON DUPLICATE KEY UPDATE id=id"
 			dosql(c, sql, value)
 	print "Adding complete"
@@ -284,7 +284,7 @@ if __name__ == "__main__":
 				# unsubscribe old
 				olddept = find_department(parse_postcode(old[id][POSTCODE]))
 				oldlist = "Nieuwsbrief "+olddept
-				value = (t, oldlist, v[0])
+				value = (now, oldlist, v[0])
 				sql = "UPDATE IGNORE j16_jnews_listssubscribers SET unsubdate=%s, unsubscribe=1 WHERE list_id IN (SELECT id FROM j16_jnews_lists WHERE list_name=%s) AND subscriber_id = (SELECT id FROM j16_jnews_subscribers WHERE email=%s)"
 				dosql(c, sql, value)
 			except:
@@ -292,7 +292,7 @@ if __name__ == "__main__":
 			try:
 				# subscribe new
 				if v[1] != "Nieuwsbrief Buitenland":
-					value = (v[0], v[1], t)
+					value = (v[0], v[1], now)
 					sql = "INSERT INTO j16_jnews_listssubscribers (subscriber_id, list_id, subdate) VALUES ((SELECT id FROM j16_jnews_subscribers WHERE email=%s LIMIT 1), (SELECT id FROM j16_jnews_lists WHERE list_name=%s), %s) ON DUPLICATE KEY UPDATE list_id = list_id"
 					dosql(c, sql, value)
 			except:
