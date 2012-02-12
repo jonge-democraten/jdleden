@@ -59,7 +59,7 @@ REGIO = 12
 
 # CSV Header
 HEADER = [
-	"Lidnummer", 		"Lidsoort", 		"Lid sinds", 		"Lid beeindigd", 
+	"Lidnummer", 		"Lidsoort", 		"Lid sinds", 		"Lid beeindigd",
 	"Volledige naam", 	"Geslacht", 		"Geboortedatum",	"Straat",
 	"Postcode",			"Plaats",			"Emailadres",		"Afdeling",
 	"Regio",			"Telefoonnummer",	"Mobiel",			"Stemrecht"
@@ -72,21 +72,21 @@ AFDELINGEN = {
 		(8200,8249)],
 	"Leiden-Haaglanden":[
 		(2160,2799)],
-	"Rotterdam":[ 
-		(2800,3399), 
-		(4200,4549)], 
-	"Utrecht":[ 
-		(3400,4199), 
-		(6700,6799), 
-		(7300,7399), 
-		(8000,8099), # ex-Zwolle 
-		(8160,8199), 
-		(8250,8299)], 
-	"Brabant":[ 
-		(4550,5339), 
-		(5400,5799)], 
-	"Arnhem-Nijmegen":[ 
-		(5340,5399), 
+	"Rotterdam":[
+		(2800,3399),
+		(4200,4549)],
+	"Utrecht":[
+		(3400,4199),
+		(6700,6799),
+		(7300,7399),
+		(8000,8099),
+		(8160,8199),
+		(8250,8299)],
+	"Brabant":[
+		(4550,5339),
+		(5400,5799)],
+	"Arnhem-Nijmegen":[
+		(5340,5399),
 		(5800,5899),
 		(6500,6699),
 		(6800,7299)],
@@ -179,7 +179,7 @@ def dosql(c, sql, value):
 			logger.error("Error executing previous query")
 	for msg in c.messages:
 		logger.debug(msg)
-			
+
 
 if __name__ == "__main__":
 	# define command-line options
@@ -234,29 +234,29 @@ Usage: %prog [options] arguments
 		else:
 			logger.critical("Wrong old.xls")
 			sys.exit(1)
-	
+
 	# FIXME xlwt code should go somewhere around here (before SQL-code)
 	if not options.only_jnews:
 		logger.info("placeholder xlwt")
-		
+
 	if not options.only_excel:
 		logger.info("Reading member lists...")
 		old = read_xls(oldfile)
 		new = read_xls(newfile)
 		logger.info("Reading complete")
-	
+
 		logger.info("Computing changes...")
 		plus, min = get_new_and_former_members(old, new)
 		changed = get_changed_members(old, new)
 		plus_split = split_by_department(plus)
 		logger.info("Computing complete")
-	
+
 		# In de jnews tables gebruik ik het email adres als identifier voor de persoon.
-		# De lid id kan niet gebruikt worden vanwege mogelijke collisions door 2 
+		# De lid id kan niet gebruikt worden vanwege mogelijke collisions door 2
 		# onafhankelijke inschrijfmogenlijkheden (nieuwsbrief form en ledenadministratie).
 		db = MySQLdb.connect(user=dbcfg["user"], passwd=dbcfg["password"], db=dbcfg["name"])
 		c = db.cursor()
-	
+
 		# remove old members
 		logger.info("Removing members...")
 		for m in min:
@@ -264,7 +264,7 @@ Usage: %prog [options] arguments
 			sql = "UPDATE IGNORE j16_jnews_listssubscribers SET unsubdate=%s, unsubscribe=1 WHERE subscriber_id = (SELECT id FROM j16_jnews_subscribers WHERE email=%s)"
 			dosql(c, sql, value)
 		logger.info("Removing complete")
-		
+
 		# update changed members
 		logger.info("Updating changed members...")
 		moved = {}
@@ -282,8 +282,8 @@ Usage: %prog [options] arguments
 					moved[id] = changed[id]
 		moved_split = split_by_department(moved)
 		logger.info("Changes complete")
-	
-		# Add new members	
+
+		# Add new members
 		logger.info("Adding new members...")
 		for d in plus_split.keys():
 			for id in plus_split[d].keys():
@@ -291,7 +291,7 @@ Usage: %prog [options] arguments
 				sql = "INSERT INTO j16_jnews_subscribers (name, email, confirmed, subscribe_date) VALUES (%s, %s, %s, %s) ON DUPLICATE KEY UPDATE id=id"
 				dosql(c, sql, value)
 		logger.info("Adding complete")
-		
+
 		# Add the new members to their department
 		logger.info("Subscribing new members to lists...")
 		for d in plus_split.keys():
