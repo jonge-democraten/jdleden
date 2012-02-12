@@ -8,21 +8,19 @@ import MySQLdb
 import xlrd
 import time
 import hashlib
+import ConfigParser
 
 debug = 0
 dryrun = 0
 t = time.strftime("%s")
 
-DB_NAME = "joomla16"
-DB_USER = "joomla16"
-# trick to read keyfile from same dir as actual script, even when called via symlink
-keyfile = os.path.dirname(os.path.realpath(__file__))+"/ledenlijst.key"
-f = open(keyfile, "r")
-DB_PASSWD = f.readline().rstrip()
-f.close()
-#DB_NAME = "jddev"
-#DB_USER = "jddev"
-#DB_PASSWD = "eJzbNru5wmJrb7FM"
+# trick to read config from same dir as actual script, even when called via symlink
+scriptdir = os.path.dirname(os.path.realpath(__file__))
+config = ConfigParser.RawConfigParser()
+config.read(os.path.join(scriptdir, "ledenlijst.cfg"))
+dbcfg = {}
+for o, v in config.items("database"):
+	dbcfg[o] = v
 
 # Geef alle belangrijke kolommen een naam
 LIDNUMMER = 0
@@ -226,7 +224,7 @@ if __name__ == "__main__":
 	# In de jnews tables gebruik ik het email adres als identifier voor de persoon.
 	# De lid id kan niet gebruikt worden vanwege mogelijke collisions door 2 
 	# onafhankelijke inschrijfmogenlijkheden (nieuwsbrief form en ledenadministratie).
-	db = MySQLdb.connect(user=DB_USER, passwd=DB_PASSWD, db=DB_NAME)
+	db = MySQLdb.connect(user=dbcfg["user"], passwd=dbcfg["password"], db=dbcfg["name"])
 	c = db.cursor()
 
 	# remove old members

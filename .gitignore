@@ -1,6 +1,6 @@
 *.swp
-*.key
 *.pyc
 checksum.txt
 invoer/
 historie/
+ledenlijst.cfg
