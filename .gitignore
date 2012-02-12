@@ -2,5 +2,5 @@
 *.pyc
 checksum.txt
 invoer/
-historie/
+log/
 ledenlijst.cfg
