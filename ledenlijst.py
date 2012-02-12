@@ -112,13 +112,9 @@ def read_xls(f):
     leden = {}
     for i in xrange(1,sheet.nrows-1):  # Skip header and "Totaal:" row
         row = sheet.row(i)
-        #print i, int(row[LIDNUMMER].value)
         leden[int(row[LIDNUMMER].value)] = [c.value for c in row]
         try:
             leden[int(row[LIDNUMMER].value)][NAAM] = leden[int(row[LIDNUMMER].value)][NAAM].split(', ')[1]+' '+leden[int(row[LIDNUMMER].value)][NAAM].split(', ')[0]
-#            leden[int(row[LIDNUMMER].value)][2] = xlrd.xldate_as_tuple(leden[int(row[LIDNUMMER].value)][2], 0)
-#            leden[int(row[LIDNUMMER].value)][3] = xlrd.xldate_as_tuple(leden[int(row[LIDNUMMER].value)][3], 0)
-#            leden[int(row[LIDNUMMER].value)][6] = xlrd.xldate_as_tuple(leden[int(row[LIDNUMMER].value)][6], 0)
         except:
             logger.warning("geen voor- of achternaam")
     return leden
@@ -297,7 +293,6 @@ Usage: %prog [options] arguments
         # Add the new members to their department
         logger.info("Subscribing new members to lists...")
         for d in plus_split.keys():
-    #        values = [(db.escape_string(plus_split[d][id][EMAIL]), db.escape_string("Digizine")) for id in plus_split[d].keys()]
             values = [(db.escape_string(plus_split[d][id][EMAIL]), db.escape_string("Digizine"), db.escape_string("Nieuwsbrief "+d)) for id in plus_split[d].keys()]
             for v in values:
                 value = (v[0], v[1])
