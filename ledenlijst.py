@@ -58,6 +58,9 @@ EMAIL = 10
 POSTCODE = 8
 NAAM  = 4
 REGIO = 12
+LIDSINDS = 2
+LIDTOT = 3
+GEBDATUM = 6
 
 # CSV Header
 HEADER = [
@@ -117,10 +120,18 @@ def read_xls(f):
             leden[int(row[LIDNUMMER].value)][NAAM] = leden[int(row[LIDNUMMER].value)][NAAM].split(', ')[1]+' '+leden[int(row[LIDNUMMER].value)][NAAM].split(', ')[0]
         except:
             logger.warning("geen voor- of achternaam")
+    # Sanitise data
+    for id in leden.keys():
+        leden[id][LIDNUMMER] = int(leden[id][LIDNUMMER])
+        leden[id][LIDSINDS] = int(leden[id][LIDSINDS])
+        if leden[id][LIDTOT]:
+            leden[id][LIDTOT] = int(leden[id][LIDTOT])
+        if leden[id][GEBDATUM]:
+            leden[id][GEBDATUM] = int(leden[id][GEBDATUM])
     return leden
 
 def write_csv(f, members):
-    w = csv.writer(open(f, "w+"))
+    w = csv.writer(open(f, "w+"), delimiter=";")
     w.writerow(HEADER)
     # Ugly hack to convert all values to latin-1 strings
     w.writerows([[unicode(c).encode('latin-1') for c in r] for r in members.values()])
@@ -233,9 +244,25 @@ Usage: %prog [options] arguments
             logger.critical("Wrong old.xls")
             sys.exit(1)
 
-    # FIXME xlwt code should go somewhere around here (before SQL-code)
+    # FIXME rewrite double excel/jnews code so no doubles
     if not options.only_jnews:
-        logger.info("placeholder xlwt")
+        logger.info("Writing department-xls...")
+        # Last argument is new.xls
+        filename = args[-1]
+        leden = read_xls(filename)
+        split = split_by_department(leden)
+        directory = time.strftime("uitvoer/%F %T")
+        # maak directories en negeer als al bestaat
+        try:
+            os.makedirs(directory, 0700)
+        except IOError as e:
+            if e.errno == errno.EEXIST:
+                pass
+            else:
+                raise
+        for key in split.keys():
+            write_csv("%s/%s.csv" % (directory,key), split[key])
+        logger.info("Writing complete")
 
     if not options.only_excel:
         logger.info("Reading member lists...")
