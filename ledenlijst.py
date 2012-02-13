@@ -14,43 +14,12 @@ import MySQLdb
 import xlrd
 import xlwt
 
-now = time.strftime("%s")          # Epoch-time
-nowhuman = time.strftime("%F %T")  # Human-readable time
-
-# Trick to read config from same dir as actual script, even when called via symlink
-scriptdir = os.path.dirname(os.path.realpath(__file__))
-config = ConfigParser.RawConfigParser()
-config.read(os.path.join(scriptdir, "ledenlijst.cfg"))
-dbcfg = {}
-for o, v in config.items("database"):
-    dbcfg[o] = v
-
-# Set up logging
-logdir = os.path.join(scriptdir, "log", nowhuman)
-# Make directory if needed
-try:
-    os.makedirs(logdir, 0700)
-except IOError as e:
-    if e.errno == errno.EEXIST:
-        pass
-    else:
-        raise
-# Log to console, debug.log and info.log
-logger = logging.getLogger()
-logger.setLevel(logging.DEBUG)
-ch = logging.StreamHandler()
-ch.setLevel(logging.INFO)
-fhd = logging.FileHandler(os.path.join(logdir, "debug.log"))
-fhd.setLevel(logging.DEBUG)
-fhi = logging.FileHandler(os.path.join(logdir, "info.log"))
-fhi.setLevel(logging.INFO)
-formatter = logging.Formatter("%(asctime)s %(levelname)s: %(message)s")
-ch.setFormatter(formatter)
-fhd.setFormatter(formatter)
-fhi.setFormatter(formatter)
-logger.addHandler(ch)
-logger.addHandler(fhd)
-logger.addHandler(fhi)
+NOW = time.strftime("%s")          # Epoch-time
+NOWHUMAN = time.strftime("%F %T")  # Human-readable time
+# Trick to establish the directory of the actual script, even when called
+# via symlink.  The purpose of this is to write output-files relative to
+# the script-directory, not the current directory.
+SCRIPTDIR = os.path.dirname(os.path.realpath(__file__))
 
 # Geef alle belangrijke kolommen een naam
 LIDNUMMER = 0
@@ -64,10 +33,10 @@ GEBDATUM = 6
 
 # CSV Header
 HEADER = [
-    "Lidnummer",         "Lidsoort",         "Lid sinds",         "Lid beeindigd",
-    "Volledige naam",     "Geslacht",         "Geboortedatum",    "Straat",
-    "Postcode",            "Plaats",            "Emailadres",        "Afdeling",
-    "Regio",            "Telefoonnummer",    "Mobiel",            "Stemrecht"
+    "Lidnummer",        "Lidsoort",         "Lid sinds",        "Lid beeindigd",
+    "Volledige naam",   "Geslacht",         "Geboortedatum",    "Straat",
+    "Postcode",         "Plaats",           "Emailadres",       "Afdeling",
+    "Regio",            "Telefoonnummer",   "Mobiel",           "Stemrecht"
 ]
 
 # Alle afdelingen met bijbehorende postcode ranges
@@ -189,6 +158,44 @@ def dosql(c, sql, value):
     for msg in c.messages:
         logger.debug(msg)
 
+def trymkdir(dir, perm=0700):
+    # Make directory if needed
+    try:
+        os.makedirs(dir, perm)
+    except IOError as e:
+        if e.errno == errno.EEXIST:
+            pass
+        else:
+            raise
+
+
+# Read configuration-file
+config = ConfigParser.RawConfigParser()
+config.read(os.path.join(SCRIPTDIR, "ledenlijst.cfg"))
+dbcfg = {}
+for o, v in config.items("database"):
+    dbcfg[o] = v
+
+# Set up logging
+logdir = os.path.join(SCRIPTDIR, "log", NOWHUMAN)
+trymkdir(logdir, 0700)
+# Log to console, debug.log and info.log
+logger = logging.getLogger()
+logger.setLevel(logging.DEBUG)
+ch = logging.StreamHandler()
+ch.setLevel(logging.INFO)
+fhd = logging.FileHandler(os.path.join(logdir, "debug.log"))
+fhd.setLevel(logging.DEBUG)
+fhi = logging.FileHandler(os.path.join(logdir, "info.log"))
+fhi.setLevel(logging.INFO)
+formatter = logging.Formatter("%(asctime)s %(levelname)s: %(message)s")
+ch.setFormatter(formatter)
+fhd.setFormatter(formatter)
+fhi.setFormatter(formatter)
+logger.addHandler(ch)
+logger.addHandler(fhd)
+logger.addHandler(fhi)
+
 
 if __name__ == "__main__":
     # Define command-line options
@@ -211,12 +218,13 @@ Usage: %prog [options] arguments
     elif options.only_excel:
         if len(args) != 1:
             parser.error("need 1 argument: new.xls")
+        newfile = args[0]
     # When running in regular- or only_jnews-mode, require 2 args and check sanity
     else:
         if len(args) != 2:
             parser.error("need 2 arguments: old.xls new.xls")
         logger.info("Verifying sanity of input files")
-        csumfile = os.path.join(scriptdir, "checksum.txt")
+        csumfile = os.path.join(SCRIPTDIR, "checksum.txt")
         oldfile = args[0]
         newfile = args[1]
         with open(oldfile,"r") as f:
@@ -244,30 +252,26 @@ Usage: %prog [options] arguments
             logger.critical("Wrong old.xls")
             sys.exit(1)
 
-    # FIXME rewrite double excel/jnews code so no doubles
-    if not options.only_jnews:
-        logger.info("Writing department-xls...")
-        # Last argument is new.xls
-        filename = args[-1]
-        leden = read_xls(filename)
-        split = split_by_department(leden)
-        directory = time.strftime("uitvoer/%F %T")
-        # maak directories en negeer als al bestaat
-        try:
-            os.makedirs(directory, 0700)
-        except IOError as e:
-            if e.errno == errno.EEXIST:
-                pass
-            else:
-                raise
-        for key in split.keys():
-            write_csv("%s/%s.csv" % (directory,key), split[key])
-        logger.info("Writing complete")
+    # This code needs to exist above only_jnews- and only_excel-blocks
+    # because it applies to both.
+    logger.info("Reading %s ..." % newfile)
+    new = read_xls(newfile)
+    logger.info("Reading complete")
 
+    # Don't run this block in jNews-only-mode
+    if not options.only_jnews:
+        logger.info("Handling department-xls...")
+        split = split_by_department(new)
+        outdir = os.path.join("uitvoer", time.strftime("%F %T"))
+        trymkdir(outdir, 0700)
+        for key in split.keys():
+            write_csv("%s/%s.csv" % (outdir,key), split[key])
+        logger.info("Department-xls complete")
+
+    # Don't run this block in Excel-only-mode
     if not options.only_excel:
-        logger.info("Reading member lists...")
+        logger.info("Reading %s ..." % oldfile)
         old = read_xls(oldfile)
-        new = read_xls(newfile)
         logger.info("Reading complete")
 
         logger.info("Computing changes...")
@@ -285,7 +289,7 @@ Usage: %prog [options] arguments
         # Remove old members
         logger.info("Removing members...")
         for m in min:
-            value = (now, min[m][EMAIL])
+            value = (NOW, min[m][EMAIL])
             sql = "UPDATE IGNORE j16_jnews_listssubscribers SET unsubdate=%s, unsubscribe=1 WHERE subscriber_id = (SELECT id FROM j16_jnews_subscribers WHERE email=%s)"
             dosql(c, sql, value)
         logger.info("Removing complete")
@@ -312,7 +316,7 @@ Usage: %prog [options] arguments
         logger.info("Adding new members...")
         for d in plus_split.keys():
             for id in plus_split[d].keys():
-                value = (plus_split[d][id][NAAM], plus_split[d][id][EMAIL], 1, now)
+                value = (plus_split[d][id][NAAM], plus_split[d][id][EMAIL], 1, NOW)
                 sql = "INSERT INTO j16_jnews_subscribers (name, email, confirmed, subscribe_date) VALUES (%s, %s, %s, %s) ON DUPLICATE KEY UPDATE id=id"
                 dosql(c, sql, value)
         logger.info("Adding complete")
@@ -339,12 +343,12 @@ Usage: %prog [options] arguments
                 # Unsubscribe old
                 olddept = find_department(parse_postcode(old[id][POSTCODE]))
                 oldlist = "Nieuwsbrief "+olddept
-                value = (now, oldlist, v[0])
+                value = (NOW, oldlist, v[0])
                 sql = "UPDATE IGNORE j16_jnews_listssubscribers SET unsubdate=%s, unsubscribe=1 WHERE list_id IN (SELECT id FROM j16_jnews_lists WHERE list_name=%s) AND subscriber_id = (SELECT id FROM j16_jnews_subscribers WHERE email=%s)"
                 dosql(c, sql, value)
                 # Subscribe new
                 if v[1] != "Nieuwsbrief Buitenland":
-                    value = (v[0], v[1], now)
+                    value = (v[0], v[1], NOW)
                     sql = "INSERT INTO j16_jnews_listssubscribers (subscriber_id, list_id, subdate) VALUES ((SELECT id FROM j16_jnews_subscribers WHERE email=%s LIMIT 1), (SELECT id FROM j16_jnews_lists WHERE list_name=%s), %s) ON DUPLICATE KEY UPDATE list_id = list_id"
                     dosql(c, sql, value)
         logger.info("Moving complete")
