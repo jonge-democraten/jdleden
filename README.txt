@@ -1,20 +1,2 @@
-Deze variant van de tool splitst de CRM-xls en regelt jNews-inschrijvingen.
-
-Gebruiksaanwijzing:
-IN:
-- ledenlijst landelijk maand oud
-- ledenlijst landelijk maand nieuw
-- mysql tabel met nieuwsbriefabonnees digizine
-- mysql tabel met nieuwsbriefabonnees afdelingslijsten
-
-UIT:
-- ledenlijst per afdeling (maand nieuw)
-- ledenlijst met updates per afdeling
-- update mysql door oud-leden te verwijderen
-- update mysql door nieuwe leden toe te voegen aan digizine
-- update mysql door nieuwe leden toe te voegen aan afdelingslijst
-- update mysql door gewijzigde mail en/of naam aan te passen in alle lijsten met dat lid
-
-Alle nieuwe leden in de digizine lijst
-stemrecht, afdeling en regio  eruit
-
+This tool handles both department-spreadsheets and jNews-subscriptions.
+See https://trac.jongedemocraten.nl/wiki/UpdateLedenlijst
