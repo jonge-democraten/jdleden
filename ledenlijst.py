@@ -21,7 +21,7 @@ NOWHUMAN = time.strftime("%F %T")  # Human-readable time
 # the script-directory, not the current directory.
 SCRIPTDIR = os.path.dirname(os.path.realpath(__file__))
 
-# Geef alle belangrijke kolommen een naam
+# Give all important columns a name
 LIDNUMMER = 0
 LIDSINDS = 2
 LIDTOT = 3
@@ -56,7 +56,7 @@ COLUMN_WIDTH = [
     5000,               4000,               4000,               2000
 ]
 
-# Alle afdelingen met bijbehorende postcode ranges
+# All departments with their postcal code ranges
 AFDELINGEN = {
     "Amsterdam":[
         (1000,2159),
@@ -336,9 +336,9 @@ Usage: %prog [options] arguments
         plus_split = split_by_department(plus)
         logger.info("Computing complete")
 
-        # In de jnews tables gebruik ik het email adres als identifier voor de persoon.
-        # De lid id kan niet gebruikt worden vanwege mogelijke collisions door 2
-        # onafhankelijke inschrijfmogenlijkheden (nieuwsbrief form en ledenadministratie).
+        # Use email-address instead of member-id to identify subscriptions.
+        # Member-id cannot be used because of risk of collisions from two
+        # independent subscription-vectors (webform and D66 administration).
         db = MySQLdb.connect(user=dbcfg["user"], passwd=dbcfg["password"], db=dbcfg["name"])
         c = db.cursor()
 
