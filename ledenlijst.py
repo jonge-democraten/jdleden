@@ -4,8 +4,8 @@ import sys
 import os
 import errno
 import time
+import datetime
 import hashlib
-import csv
 import logging
 import ConfigParser
 from optparse import OptionParser
@@ -23,20 +23,37 @@ SCRIPTDIR = os.path.dirname(os.path.realpath(__file__))
 
 # Geef alle belangrijke kolommen een naam
 LIDNUMMER = 0
-EMAIL = 10
-POSTCODE = 8
-NAAM  = 4
-REGIO = 12
 LIDSINDS = 2
 LIDTOT = 3
+NAAM  = 4
 GEBDATUM = 6
+POSTCODE = 8
+EMAIL = 10
+REGIO = 12
+STEMRECHT = 15
 
-# CSV Header
+# Excel-output formatting
+STYLE_DEFAULT = xlwt.Style.default_style
+STYLE_HEADER = xlwt.easyxf("font: bold on")
+STYLE_DATE = xlwt.easyxf(num_format_str="YYYY-MM-DD")
 HEADER = [
     "Lidnummer",        "Lidsoort",         "Lid sinds",        "Lid beeindigd",
     "Volledige naam",   "Geslacht",         "Geboortedatum",    "Straat",
     "Postcode",         "Plaats",           "Emailadres",       "Afdeling",
     "Regio",            "Telefoonnummer",   "Mobiel",           "Stemrecht"
+]
+CELL_STYLE = [
+    STYLE_DEFAULT,      STYLE_DEFAULT,      STYLE_DATE,         STYLE_DATE,
+    STYLE_DEFAULT,      STYLE_DEFAULT,      STYLE_DATE,         STYLE_DEFAULT,
+    STYLE_DEFAULT,      STYLE_DEFAULT,      STYLE_DEFAULT,      STYLE_DEFAULT,
+    STYLE_DEFAULT,      STYLE_DEFAULT,      STYLE_DEFAULT,      STYLE_DEFAULT
+]
+# Every 1000 is 0.3 inch is 7.62 mm (full metal jacket)
+COLUMN_WIDTH = [
+    2000,               3000,               3000,               3000,
+    6000,               3000,               3000,               6000,
+    3000,               5000,               8000,               5000,
+    5000,               4000,               4000,               2000
 ]
 
 # Alle afdelingen met bijbehorende postcode ranges
@@ -85,25 +102,57 @@ def read_xls(f):
     for i in xrange(1,sheet.nrows-1):  # Skip header and "Totaal:" row
         row = sheet.row(i)
         leden[int(row[LIDNUMMER].value)] = [c.value for c in row]
-        try:
-            leden[int(row[LIDNUMMER].value)][NAAM] = leden[int(row[LIDNUMMER].value)][NAAM].split(', ')[1]+' '+leden[int(row[LIDNUMMER].value)][NAAM].split(', ')[0]
-        except:
-            logger.warning("geen voor- of achternaam")
     # Sanitise data
     for id in leden.keys():
+        # Swap firstname and lastname
+        try:
+            lastname, firstname = leden[id][NAAM].split(', ', 1)
+        except ValueError:
+            logger.warning("[%d] geen voor- of achternaam" % id)
+        else:
+            leden[id][NAAM] = "%s %s" % (firstname, lastname)
+        # Convert member id to int
         leden[id][LIDNUMMER] = int(leden[id][LIDNUMMER])
-        leden[id][LIDSINDS] = int(leden[id][LIDSINDS])
-        if leden[id][LIDTOT]:
-            leden[id][LIDTOT] = int(leden[id][LIDTOT])
-        if leden[id][GEBDATUM]:
-            leden[id][GEBDATUM] = int(leden[id][GEBDATUM])
+        # Convert "member since" to date
+        try:
+            leden[id][LIDSINDS] = excel_to_date(leden[id][LIDSINDS])
+        except ValueError, xlrd.XLDateError:
+            logger.warning("[%d] geen lidsinds" % id)
+        # Convert "member until" to date
+        try:
+            leden[id][LIDTOT] = excel_to_date(leden[id][LIDTOT])
+        except ValueError, xlrd.XLDateError:
+            # lidtot is not important
+            logger.debug("[%d] geen lidtot" % id)
+        # Convert birthdate to date
+        try:
+            leden[id][GEBDATUM] = excel_to_date(leden[id][GEBDATUM])
+        except ValueError, xlrd.XLDateError:
+            logger.warning("[%d] geen geboortedatum" % id)
+        # Convert voting right to boolean
+        if leden[id][STEMRECHT] == "Ja":
+            leden[id][STEMRECHT] = True
+        elif leden[id][STEMRECHT] == "Nee":
+            leden[id][STEMRECHT] = False
+        else:
+            logger.warning("[%d] stemrecht ongedefinieerd" % id)
     return leden
 
-def write_csv(f, members):
-    w = csv.writer(open(f, "w+"), delimiter=";")
-    w.writerow(HEADER)
-    # Ugly hack to convert all values to latin-1 strings
-    w.writerows([[unicode(c).encode('latin-1') for c in r] for r in members.values()])
+def write_xls(f, members):
+    book = xlwt.Workbook()
+    sheet = book.add_sheet("Leden %s" % NOWHUMAN.split(" ")[0])
+    # Column widths
+    for i in xrange(len(COLUMN_WIDTH)):
+        sheet.col(i).width = COLUMN_WIDTH[i]
+    # First row of spreadsheet
+    for i in xrange(len(HEADER)):
+        sheet.write(0, i, HEADER[i], STYLE_HEADER)
+    row = 1  # Row 0 is header
+    for id in members.keys():
+        for c in xrange(len(members[id])):
+            sheet.write(row, c, members[id][c], CELL_STYLE[c])
+        row += 1
+    return book.save(f)
 
 def parse_postcode(s):
     try:
@@ -167,6 +216,12 @@ def trymkdir(dir, perm=0700):
             pass
         else:
             raise
+
+def excel_to_date(xldate):
+    # Convert Excel-date (float) to datetime-object
+    datetuple = xlrd.xldate_as_tuple(xldate, 0)
+    date = datetime.date(*datetuple[:3])
+    return date
 
 
 # Read configuration-file
@@ -264,8 +319,9 @@ Usage: %prog [options] arguments
         split = split_by_department(new)
         outdir = os.path.join("uitvoer", time.strftime("%F %T"))
         trymkdir(outdir, 0700)
-        for key in split.keys():
-            write_csv("%s/%s.csv" % (outdir,key), split[key])
+        for dept in split.keys():
+            f = os.path.join(outdir, dept+".xls")
+            write_xls(f, split[dept])
         logger.info("Department-xls complete")
 
     # Don't run this block in Excel-only-mode
