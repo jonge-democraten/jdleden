@@ -231,17 +231,14 @@ dbcfg = {}
 for o, v in config.items("database"):
     dbcfg[o] = v
 
-# Set up logging
-logdir = os.path.join(SCRIPTDIR, "log", NOWHUMAN)
-trymkdir(logdir, 0700)
-# Log to console, debug.log and info.log
+# Set up logging to console, debug.log and info.log
 logger = logging.getLogger()
 logger.setLevel(logging.DEBUG)
 ch = logging.StreamHandler()
 ch.setLevel(logging.INFO)
-fhd = logging.FileHandler(os.path.join(logdir, "debug.log"))
+fhd = logging.FileHandler(os.path.join(SCRIPTDIR, "debug.log"))
 fhd.setLevel(logging.DEBUG)
-fhi = logging.FileHandler(os.path.join(logdir, "info.log"))
+fhi = logging.FileHandler(os.path.join(SCRIPTDIR, "info.log"))
 fhi.setLevel(logging.INFO)
 formatter = logging.Formatter("%(asctime)s %(levelname)s: %(message)s")
 ch.setFormatter(formatter)
