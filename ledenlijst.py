@@ -223,6 +223,11 @@ def excel_to_date(xldate):
     date = datetime.date(*datetuple[:3])
     return date
 
+def subscribe_list(email, listname):
+    value = (email, listname, NOW)
+    sql = "INSERT INTO j16_jnews_listssubscribers (subscriber_id, list_id, subdate) VALUES ((SELECT id FROM j16_jnews_subscribers WHERE email=%s LIMIT 1), (SELECT id FROM j16_jnews_lists WHERE list_name=%s), %s) ON DUPLICATE KEY UPDATE list_id = list_id"
+    dosql(c, sql, value)
+
 
 # Read configuration-file
 config = ConfigParser.RawConfigParser()
@@ -377,21 +382,22 @@ Usage: %prog [options] arguments
         # Add the new members to their department
         logger.info("Subscribing new members to lists...")
         for d in plus_split.keys():
-            values = [(db.escape_string(plus_split[d][id][EMAIL]), db.escape_string("Digizine"), db.escape_string("Nieuwsbrief "+d)) for id in plus_split[d].keys()]
+            values = []
+            for id in plus_split[d].keys():
+                email = db.escape_string(plus_split[d][id][EMAIL])
+                values.append((email, "Digizine", "Nieuwsbrief "+d))
             for v in values:
-                value = (v[0], v[1])
-                sql = "INSERT INTO j16_jnews_listssubscribers (subscriber_id, list_id) VALUES ((SELECT id FROM j16_jnews_subscribers WHERE email=%s LIMIT 1), (SELECT id FROM j16_jnews_lists WHERE list_name=%s)) ON DUPLICATE KEY UPDATE list_id = list_id"
-                dosql(c, sql, value)
-                if v[2] != "Nieuwsbrief Buitenland":
-                    value = (v[0], v[2])
-                    sql = "INSERT INTO j16_jnews_listssubscribers (subscriber_id, list_id) VALUES ((SELECT id FROM j16_jnews_subscribers WHERE email=%s LIMIT 1), (SELECT id FROM j16_jnews_lists WHERE list_name=%s)) ON DUPLICATE KEY UPDATE list_id = list_id"
-                    dosql(c, sql, value)
+                subscribe_list(v[0], v[1])  # Digizine
+                subscribe_list(v[0], v[2])  # afdelingsnieuwsbrief
         logger.info("Subscribing complete")
         # Unsubscribe moved members from old department and subscribe to new department
         # FIXME DRY
         logger.info("Moving members to new departments...")
         for d in moved_split.keys():
-            values = [(db.escape_string(moved_split[d][id][EMAIL]), db.escape_string("Nieuwsbrief "+d)) for id in moved_split[d].keys()]
+            values = []
+            for id in moved_split[d].keys():
+                email = db.escape_string(moved_split[d][id][EMAIL])
+                values.append((email, "Nieuwsbrief "+d))
             for v in values:
                 # Unsubscribe old
                 olddept = find_department(parse_postcode(old[id][POSTCODE]))
@@ -400,10 +406,7 @@ Usage: %prog [options] arguments
                 sql = "UPDATE IGNORE j16_jnews_listssubscribers SET unsubdate=%s, unsubscribe=1 WHERE list_id IN (SELECT id FROM j16_jnews_lists WHERE list_name=%s) AND subscriber_id = (SELECT id FROM j16_jnews_subscribers WHERE email=%s)"
                 dosql(c, sql, value)
                 # Subscribe new
-                if v[1] != "Nieuwsbrief Buitenland":
-                    value = (v[0], v[1], NOW)
-                    sql = "INSERT INTO j16_jnews_listssubscribers (subscriber_id, list_id, subdate) VALUES ((SELECT id FROM j16_jnews_subscribers WHERE email=%s LIMIT 1), (SELECT id FROM j16_jnews_lists WHERE list_name=%s), %s) ON DUPLICATE KEY UPDATE list_id = list_id"
-                    dosql(c, sql, value)
+                subscribe_list(v[0], v[1])
         logger.info("Moving complete")
 
 
