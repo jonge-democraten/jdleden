@@ -304,7 +304,7 @@ Usage: %prog [options] arguments
             with open(csumfile,"w") as f:
                 # Write sha512sum-compatible checksum-file
                 f.write("%s  %s\n" % (newsha, newfile))
-                logger.info("Input files are sane")
+            logger.info("Input files are sane")
         else:
             logger.critical("Wrong old.xls")
             sys.exit(1)
