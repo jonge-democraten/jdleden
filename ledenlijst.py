@@ -260,16 +260,38 @@ Usage: %prog [options] arguments
   in regular and jNews-only-mode, arguments is 2 files: old.xls new.xls
   in Excel-only-mode, arguments is 1 file: new.xls"""
     parser = OptionParser(usage)
-    parser.add_option("-n", "--dryrun", action="store_true", dest="dryrun",
-                    help="don't execute any SQL")
-    parser.add_option("-j", "--jnews", action="store_true", dest="only_jnews",
-                    help="only update jNews-subscriptions")
-    parser.add_option("-x", "--excel", action="store_true", dest="only_excel",
-                    help="only generate Excel-files per department")
+    parser.add_option(
+            "-n", "--dryrun", action="store_true", dest="dryrun",
+            help="don't execute any SQL")
+    parser.add_option(
+            "-j", "--jnews", action="store_true", dest="only_jnews",
+            help="only update jNews-subscriptions")
+    parser.add_option(
+            "-x", "--excel", action="store_true", dest="only_excel",
+            help="only generate Excel-files per department")
+    parser.add_option(
+            "-p", "--postcode", action="append",
+            type="string", dest="new_postcodes",
+            help="treat postcode-range as moved, e.g. 1200-1299")
     # Read options and check sanity
     (options, args) = parser.parse_args()
+    # Verify that postcode is in correct form
+    if options.new_postcodes:
+        new_postcodes = []
+        for newpc in options.new_postcodes:
+            try:
+                pc_lo, pc_hi = [int(i) for i in newpc.split(",")]
+            except ValueError, AttributeError:
+                parser.error("-p needs 1 argument: 1200,1299")
+            else:
+                if pc_lo > pc_hi:
+                    parser.error("-p argument error, first part higher than second")
+                if not 1000 <= pc_lo <= 9999 or not 1000 <= pc_hi <= 9999:
+                    parser.error("-p argument error, postcode outside Dutch range")
+                new_postcodes.append((pc_lo, pc_hi))
+    # Detect which mode we run as and check sanity
     if options.only_jnews and options.only_excel:
-            parser.error("options -j and -x are mutually exclusive")
+        parser.error("options -j and -x are mutually exclusive")
     # When running in only_excel-mode, require 1 arg
     elif options.only_excel:
         if len(args) != 1:
