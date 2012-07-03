@@ -44,15 +44,24 @@ Usage: %prog [options] ledenlijst.xls oude_afdeling postcode_laag postcode_hoog"
     logger.info("Reading complete")
     logger.info("Calculating reallocated members")
     reallocated = get_reallocated_members(members, pc_lo, pc_hi)
-    logger.info("Calculating complete")
-    # do unsubscribe magic with olddept and jNews
-    for v in reallocated.values():
-        print map(lambda n: v[n], [0, 4, 8, 9])  # human-readable debug-output
+    #for v in reallocated.values():
+    #    print map(lambda n: v[n], [0, 4, 8, 9, 10])  # human-readable debug-output
     logger.info("Connecting to database")
     dbcfg = ledenlijst.dbcfg
     db = MySQLdb.connect(user=dbcfg["user"], passwd=dbcfg["password"], db=dbcfg["name"])
     c = db.cursor()
-    #value = "jasper.jongmans@jongedemocraten.nl"
-    #sql = "SELECT * FROM j16_jnews_listssubscribers WHERE email=%s"
-    #ledenlijst.dosql(c, sql, value, True)
-    # iterate over reallocated.values() and perform the moving
+    # Iterate over reallocated.values() and perform the moving
+    logger.info("Doing mass (un)subscribes")
+    for id in reallocated.keys():
+        email = db.escape_string(reallocated[id][ledenlijst.EMAIL])
+        oldlist = "Nieuwsbrief "+olddept
+        newdept = ledenlijst.find_department(
+                ledenlijst.parse_postcode(reallocated[id][ledenlijst.POSTCODE]))
+        newlist = "Nieuwsbrief "+newdept
+        # Subscribe new
+        sql, value = ledenlijst.prepare_subscribe_query(email, newlist)
+        ledenlijst.dosql(c, sql, value, options.dryrun)
+        # Unsubscribe old
+        value = (ledenlijst.NOW, oldlist, email)
+        sql = "UPDATE IGNORE j16_jnews_listssubscribers SET unsubdate=%s, unsubscribe=1 WHERE list_id IN (SELECT id FROM j16_jnews_lists WHERE list_name=%s) AND subscriber_id = (SELECT id FROM j16_jnews_subscribers WHERE email=%s)"
+        ledenlijst.dosql(c, sql, value, options.dryrun)
