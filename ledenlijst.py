@@ -195,10 +195,10 @@ def split_by_department(members):
         s[d][id] = members[id]
     return s
 
-def dosql(c, sql, value):
+def dosql(c, sql, value, dryrun=False):
     # Consolidate repeated SQL-code into one function (DRY)
     logger.debug((sql % value).encode("utf-8"))
-    if not options.dryrun:
+    if not dryrun:
         try:
             c.execute(sql, value)
         except:
@@ -222,18 +222,16 @@ def excel_to_date(xldate):
     date = datetime.date(*datetuple[:3])
     return date
 
-def subscribe_list(email, listname):
+def prepare_subscribe_query(email, listname):
     value = (email, listname, NOW)
     sql = "INSERT INTO j16_jnews_listssubscribers (subscriber_id, list_id, subdate) VALUES ((SELECT id FROM j16_jnews_subscribers WHERE email=%s LIMIT 1), (SELECT id FROM j16_jnews_lists WHERE list_name=%s), %s) ON DUPLICATE KEY UPDATE list_id = list_id"
-    dosql(c, sql, value)
+    return sql, value
 
 
 # Read configuration-file
 config = ConfigParser.RawConfigParser()
 config.read(os.path.join(SCRIPTDIR, "ledenlijst.cfg"))
-dbcfg = {}
-for o, v in config.items("database"):
-    dbcfg[o] = v
+dbcfg = dict(config.items("database"))
 
 # Set up logging to console, debug.log and info.log
 logger = logging.getLogger()
@@ -269,26 +267,8 @@ Usage: %prog [options] arguments
     parser.add_option(
             "-x", "--excel", action="store_true", dest="only_excel",
             help="only generate Excel-files per department")
-    parser.add_option(
-            "-p", "--postcode", action="append",
-            type="string", dest="new_postcodes",
-            help="treat postcode-range as moved, e.g. 1200-1299")
     # Read options and check sanity
     (options, args) = parser.parse_args()
-    # Verify that postcode is in correct form
-    if options.new_postcodes:
-        new_postcodes = []
-        for newpc in options.new_postcodes:
-            try:
-                pc_lo, pc_hi = [int(i) for i in newpc.split(",")]
-            except ValueError, AttributeError:
-                parser.error("-p needs 1 argument: 1200,1299")
-            else:
-                if pc_lo > pc_hi:
-                    parser.error("-p argument error, first part higher than second")
-                if not 1000 <= pc_lo <= 9999 or not 1000 <= pc_hi <= 9999:
-                    parser.error("-p argument error, postcode outside Dutch range")
-                new_postcodes.append((pc_lo, pc_hi))
     # Detect which mode we run as and check sanity
     if options.only_jnews and options.only_excel:
         parser.error("options -j and -x are mutually exclusive")
@@ -370,7 +350,7 @@ Usage: %prog [options] arguments
         for m in min:
             value = (NOW, min[m][EMAIL])
             sql = "UPDATE IGNORE j16_jnews_listssubscribers SET unsubdate=%s, unsubscribe=1 WHERE subscriber_id = (SELECT id FROM j16_jnews_subscribers WHERE email=%s)"
-            dosql(c, sql, value)
+            dosql(c, sql, value, options.dryrun)
         logger.info("Removing complete")
 
         # Update changed members
@@ -380,7 +360,7 @@ Usage: %prog [options] arguments
             if (changed[id][NAAM] != old[id][NAAM] or changed[id][EMAIL] != old[id][EMAIL]):
                 value = (changed[id][NAAM], changed[id][EMAIL], old[id][EMAIL])
                 sql = "UPDATE IGNORE j16_jnews_subscribers SET name=%s, email=%s WHERE email=%s"
-                dosql(c, sql, value)
+                dosql(c, sql, value, options.dryrun)
             # Check if member has moved to a new department
             if (changed[id][POSTCODE] != old[id][POSTCODE]):
                 # Only resubscribe if department actually changes
@@ -397,7 +377,7 @@ Usage: %prog [options] arguments
             for id in plus_split[d].keys():
                 value = (plus_split[d][id][NAAM], plus_split[d][id][EMAIL], 1, NOW)
                 sql = "INSERT INTO j16_jnews_subscribers (name, email, confirmed, subscribe_date) VALUES (%s, %s, %s, %s) ON DUPLICATE KEY UPDATE id=id"
-                dosql(c, sql, value)
+                dosql(c, sql, value, options.dryrun)
         logger.info("Adding complete")
 
         # Add the new members to their department
@@ -408,8 +388,12 @@ Usage: %prog [options] arguments
                 email = db.escape_string(plus_split[d][id][EMAIL])
                 values.append((email, "Digizine", "Nieuwsbrief "+d))
             for v in values:
-                subscribe_list(v[0], v[1])  # Digizine
-                subscribe_list(v[0], v[2])  # afdelingsnieuwsbrief
+                # Digizine
+                q = prepare_subscribe_query(v[0], v[1])
+                dosql(c, q[0], q[1])
+                # Afdelingsnieuwsbrief
+                q = prepare_subscribe_query(v[0], v[2])
+                dosql(c, q[0], q[1])
         logger.info("Subscribing complete")
         # Unsubscribe moved members from old department and subscribe to new department
         # FIXME DRY
@@ -425,9 +409,10 @@ Usage: %prog [options] arguments
                 oldlist = "Nieuwsbrief "+olddept
                 value = (NOW, oldlist, v[0])
                 sql = "UPDATE IGNORE j16_jnews_listssubscribers SET unsubdate=%s, unsubscribe=1 WHERE list_id IN (SELECT id FROM j16_jnews_lists WHERE list_name=%s) AND subscriber_id = (SELECT id FROM j16_jnews_subscribers WHERE email=%s)"
-                dosql(c, sql, value)
+                dosql(c, sql, value, options.dryrun)
                 # Subscribe new
-                subscribe_list(v[0], v[1])
+                q = prepare_subscribe_query(v[0], v[1])
+                dosql(c, q[0], q[1])
         logger.info("Moving complete")
 
 
