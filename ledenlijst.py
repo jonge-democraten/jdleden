@@ -389,11 +389,11 @@ Usage: %prog [options] arguments
                 values.append((email, "Digizine", "Nieuwsbrief "+d))
             for v in values:
                 # Digizine
-                q = prepare_subscribe_query(v[0], v[1])
-                dosql(c, q[0], q[1])
+                sql, value = prepare_subscribe_query(v[0], v[1])
+                dosql(c, sql, value, options.dryrun)
                 # Afdelingsnieuwsbrief
-                q = prepare_subscribe_query(v[0], v[2])
-                dosql(c, q[0], q[1])
+                sql, value = prepare_subscribe_query(v[0], v[2])
+                dosql(c, sql, value, options.dryrun)
         logger.info("Subscribing complete")
         # Unsubscribe moved members from old department and subscribe to new department
         # FIXME DRY
@@ -411,8 +411,8 @@ Usage: %prog [options] arguments
                 sql = "UPDATE IGNORE j16_jnews_listssubscribers SET unsubdate=%s, unsubscribe=1 WHERE list_id IN (SELECT id FROM j16_jnews_lists WHERE list_name=%s) AND subscriber_id = (SELECT id FROM j16_jnews_subscribers WHERE email=%s)"
                 dosql(c, sql, value, options.dryrun)
                 # Subscribe new
-                q = prepare_subscribe_query(v[0], v[1])
-                dosql(c, q[0], q[1])
+                sql, value = prepare_subscribe_query(v[0], v[1])
+                dosql(c, sql, value, options.dryrun)
         logger.info("Moving complete")
 
 
