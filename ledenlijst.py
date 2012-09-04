@@ -31,6 +31,15 @@ POSTCODE = 8
 EMAIL = 10
 REGIO = 12
 STEMRECHT = 15
+# Aid to detect input-format changes
+EXPECTED_INPUT_COLUMNS = 16  # Columns 0 to 15 (incl.)
+# Extra columns not present in input-format
+VOORNAAM = 16
+ACHTERNAAM = 17
+# If amount or ordering of columns in input-format changes, several
+# code changes are needed:
+# - change numbers of extra columns
+# - change HEADER, CELL_STYLE and COLUMN_WIDTH
 
 # Excel-output formatting
 STYLE_DEFAULT = xlwt.Style.default_style
@@ -40,20 +49,23 @@ HEADER = [
     "Lidnummer",        "Lidsoort",         "Lid sinds",        "Lid beeindigd",
     "Volledige naam",   "Geslacht",         "Geboortedatum",    "Straat",
     "Postcode",         "Plaats",           "Emailadres",       "Afdeling",
-    "Regio",            "Telefoonnummer",   "Mobiel",           "Stemrecht"
+    "Regio",            "Telefoonnummer",   "Mobiel",           "Stemrecht",
+    "Voornaam",         "Achternaam",
 ]
 CELL_STYLE = [
     STYLE_DEFAULT,      STYLE_DEFAULT,      STYLE_DATE,         STYLE_DATE,
     STYLE_DEFAULT,      STYLE_DEFAULT,      STYLE_DATE,         STYLE_DEFAULT,
     STYLE_DEFAULT,      STYLE_DEFAULT,      STYLE_DEFAULT,      STYLE_DEFAULT,
-    STYLE_DEFAULT,      STYLE_DEFAULT,      STYLE_DEFAULT,      STYLE_DEFAULT
+    STYLE_DEFAULT,      STYLE_DEFAULT,      STYLE_DEFAULT,      STYLE_DEFAULT,
+    STYLE_DEFAULT,      STYLE_DEFAULT,
 ]
 # Every 1000 is 0.3 inch is 7.62 mm (full metal jacket)
 COLUMN_WIDTH = [
     2000,               3000,               3000,               3000,
     6000,               3000,               3000,               6000,
     3000,               5000,               8000,               5000,
-    5000,               4000,               4000,               2000
+    5000,               4000,               4000,               2000,
+    4000,               4000,
 ]
 
 # All departments with their postcal code ranges
@@ -100,16 +112,21 @@ def read_xls(f):
     leden = {}
     for i in xrange(1,sheet.nrows-1):  # Skip header and "Totaal:" row
         row = sheet.row(i)
+        if len(row) != EXPECTED_INPUT_COLUMNS:
+            # If this happens, consult comment near constants
+            logger.critical("Wrong amount of columns in input-data, "\
+                    "got %d, expected %d." % (len(row), EXPECTED_INPUT_COLUMNS))
+            sys.exit(1)
         leden[int(row[LIDNUMMER].value)] = [c.value for c in row]
     # Sanitise data
     for id in leden.keys():
-        # Swap firstname and lastname
+        # Split firstname and lastname
         try:
             lastname, firstname = leden[id][NAAM].split(', ', 1)
         except ValueError:
             logger.warning("[%d] geen voor- of achternaam" % id)
         else:
-            leden[id][NAAM] = "%s %s" % (firstname, lastname)
+            leden[id] += [firstname, lastname]
         # Convert member id to int
         leden[id][LIDNUMMER] = int(leden[id][LIDNUMMER])
         # Convert "member since" to date
@@ -358,7 +375,8 @@ Usage: %prog [options] arguments
         moved = {}
         for id in changed.keys():
             if (changed[id][NAAM] != old[id][NAAM] or changed[id][EMAIL] != old[id][EMAIL]):
-                value = (changed[id][NAAM], changed[id][EMAIL], old[id][EMAIL])
+                name = "%s %s" % (changed[id][VOORNAAM], changed[id][ACHTERNAAM])
+                value = (name, changed[id][EMAIL], old[id][EMAIL])
                 sql = "UPDATE IGNORE j16_jnews_subscribers SET name=%s, email=%s WHERE email=%s"
                 dosql(c, sql, value, options.dryrun)
             # Check if member has moved to a new department
@@ -375,7 +393,8 @@ Usage: %prog [options] arguments
         logger.info("Adding new members...")
         for d in plus_split.keys():
             for id in plus_split[d].keys():
-                value = (plus_split[d][id][NAAM], plus_split[d][id][EMAIL], 1, NOW)
+                name = "%s %s" % (plus_split[d][id][VOORNAAM], plus_split[d][id][ACHTERNAAM])
+                value = (name, plus_split[d][id][EMAIL], 1, NOW)
                 sql = "INSERT INTO j16_jnews_subscribers (name, email, confirmed, subscribe_date) VALUES (%s, %s, %s, %s) ON DUPLICATE KEY UPDATE id=id"
                 dosql(c, sql, value, options.dryrun)
         logger.info("Adding complete")
