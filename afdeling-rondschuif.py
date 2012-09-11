@@ -63,5 +63,5 @@ Usage: %prog [options] ledenlijst.xls oude_afdeling postcode_laag postcode_hoog"
         ledenlijst.dosql(c, sql, value, options.dryrun)
         # Unsubscribe old
         value = (ledenlijst.NOW, oldlist, email)
-        sql = "UPDATE IGNORE j16_jnews_listssubscribers SET unsubdate=%s, unsubscribe=1 WHERE list_id IN (SELECT id FROM j16_jnews_lists WHERE list_name=%s) AND subscriber_id = (SELECT id FROM j16_jnews_subscribers WHERE email=%s)"
+        sql = "UPDATE IGNORE 2gWw_jnews_listssubscribers SET unsubdate=%s, unsubscribe=1 WHERE list_id IN (SELECT id FROM 2gWw_jnews_lists WHERE list_name=%s) AND subscriber_id = (SELECT id FROM 2gWw_jnews_subscribers WHERE email=%s)"
         ledenlijst.dosql(c, sql, value, options.dryrun)
