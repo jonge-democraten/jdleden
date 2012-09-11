@@ -50,7 +50,7 @@ HEADER = [
     "Volledige naam",   "Geslacht",         "Geboortedatum",    "Straat",
     "Postcode",         "Plaats",           "Emailadres",       "Afdeling",
     "Regio",            "Telefoonnummer",   "Mobiel",           "Stemrecht",
-    "Voornaam",         "Achternaam",
+    "Voorna(a)m(en)",   "Achternaam",
 ]
 CELL_STYLE = [
     STYLE_DEFAULT,      STYLE_DEFAULT,      STYLE_DATE,         STYLE_DATE,
@@ -125,8 +125,9 @@ def read_xls(f):
             lastname, firstname = leden[id][NAAM].split(', ', 1)
         except ValueError:
             logger.warning("[%d] geen voor- of achternaam" % id)
+            leden[id] += ['', '']  # Columns need to exist anyway
         else:
-            leden[id] += [firstname, lastname]
+            leden[id] += [firstname, lastname]  # Append to existing list
         # Convert member id to int
         leden[id][LIDNUMMER] = int(leden[id][LIDNUMMER])
         # Convert "member since" to date
@@ -243,6 +244,18 @@ def prepare_subscribe_query(email, listname):
     value = (email, listname, NOW)
     sql = "INSERT INTO j16_jnews_listssubscribers (subscriber_id, list_id, subdate) VALUES ((SELECT id FROM j16_jnews_subscribers WHERE email=%s LIMIT 1), (SELECT id FROM j16_jnews_lists WHERE list_name=%s), %s) ON DUPLICATE KEY UPDATE list_id = list_id"
     return sql, value
+
+def format_name(fullname, firstname, lastname):
+    # Try to format a sensible name even with incomplete data
+    if len(firstname) and len(lastname):
+        # Complete data, return parsed name
+        return "%s %s" % (firstname, lastname)
+    elif len(fullname):
+        # Incomplete data, return unparsed name
+        return fullname
+    else:
+        # No data at all, return error
+        return "ONBEKENDE_NAAM"
 
 
 # Read configuration-file
@@ -375,7 +388,7 @@ Usage: %prog [options] arguments
         moved = {}
         for id in changed.keys():
             if (changed[id][NAAM] != old[id][NAAM] or changed[id][EMAIL] != old[id][EMAIL]):
-                name = "%s %s" % (changed[id][VOORNAAM], changed[id][ACHTERNAAM])
+                name = format_name(changed[id][NAAM], changed[id][VOORNAAM], changed[id][ACHTERNAAM])
                 value = (name, changed[id][EMAIL], old[id][EMAIL])
                 sql = "UPDATE IGNORE j16_jnews_subscribers SET name=%s, email=%s WHERE email=%s"
                 dosql(c, sql, value, options.dryrun)
@@ -393,7 +406,7 @@ Usage: %prog [options] arguments
         logger.info("Adding new members...")
         for d in plus_split.keys():
             for id in plus_split[d].keys():
-                name = "%s %s" % (plus_split[d][id][VOORNAAM], plus_split[d][id][ACHTERNAAM])
+                name = format_name(plus_split[d][id][NAAM], plus_split[d][id][VOORNAAM], plus_split[d][id][ACHTERNAAM])
                 value = (name, plus_split[d][id][EMAIL], 1, NOW)
                 sql = "INSERT INTO j16_jnews_subscribers (name, email, confirmed, subscribe_date) VALUES (%s, %s, %s, %s) ON DUPLICATE KEY UPDATE id=id"
                 dosql(c, sql, value, options.dryrun)
