@@ -242,7 +242,7 @@ def excel_to_date(xldate):
 
 def prepare_subscribe_query(email, listname):
     value = (email, listname, NOW)
-    sql = "INSERT INTO j16_jnews_listssubscribers (subscriber_id, list_id, subdate) VALUES ((SELECT id FROM j16_jnews_subscribers WHERE email=%s LIMIT 1), (SELECT id FROM j16_jnews_lists WHERE list_name=%s), %s) ON DUPLICATE KEY UPDATE list_id = list_id"
+    sql = "INSERT INTO 2gWw_jnews_listssubscribers (subscriber_id, list_id, subdate) VALUES ((SELECT id FROM 2gWw_jnews_subscribers WHERE email=%s LIMIT 1), (SELECT id FROM 2gWw_jnews_lists WHERE list_name=%s), %s) ON DUPLICATE KEY UPDATE list_id = list_id"
     return sql, value
 
 def format_name(fullname, firstname, lastname):
@@ -379,7 +379,7 @@ Usage: %prog [options] arguments
         logger.info("Removing members...")
         for m in min:
             value = (NOW, min[m][EMAIL])
-            sql = "UPDATE IGNORE j16_jnews_listssubscribers SET unsubdate=%s, unsubscribe=1 WHERE subscriber_id = (SELECT id FROM j16_jnews_subscribers WHERE email=%s)"
+            sql = "UPDATE IGNORE 2gWw_jnews_listssubscribers SET unsubdate=%s, unsubscribe=1 WHERE subscriber_id = (SELECT id FROM 2gWw_jnews_subscribers WHERE email=%s)"
             dosql(c, sql, value, options.dryrun)
         logger.info("Removing complete")
 
@@ -390,7 +390,7 @@ Usage: %prog [options] arguments
             if (changed[id][NAAM] != old[id][NAAM] or changed[id][EMAIL] != old[id][EMAIL]):
                 name = format_name(changed[id][NAAM], changed[id][VOORNAAM], changed[id][ACHTERNAAM])
                 value = (name, changed[id][EMAIL], old[id][EMAIL])
-                sql = "UPDATE IGNORE j16_jnews_subscribers SET name=%s, email=%s WHERE email=%s"
+                sql = "UPDATE IGNORE 2gWw_jnews_subscribers SET name=%s, email=%s WHERE email=%s"
                 dosql(c, sql, value, options.dryrun)
             # Check if member has moved to a new department
             if (changed[id][POSTCODE] != old[id][POSTCODE]):
@@ -408,7 +408,7 @@ Usage: %prog [options] arguments
             for id in plus_split[d].keys():
                 name = format_name(plus_split[d][id][NAAM], plus_split[d][id][VOORNAAM], plus_split[d][id][ACHTERNAAM])
                 value = (name, plus_split[d][id][EMAIL], 1, NOW)
-                sql = "INSERT INTO j16_jnews_subscribers (name, email, confirmed, subscribe_date) VALUES (%s, %s, %s, %s) ON DUPLICATE KEY UPDATE id=id"
+                sql = "INSERT INTO 2gWw_jnews_subscribers (name, email, confirmed, subscribe_date) VALUES (%s, %s, %s, %s) ON DUPLICATE KEY UPDATE id=id"
                 dosql(c, sql, value, options.dryrun)
         logger.info("Adding complete")
 
@@ -440,7 +440,7 @@ Usage: %prog [options] arguments
                 olddept = find_department(parse_postcode(old[id][POSTCODE]))
                 oldlist = "Nieuwsbrief "+olddept
                 value = (NOW, oldlist, v[0])
-                sql = "UPDATE IGNORE j16_jnews_listssubscribers SET unsubdate=%s, unsubscribe=1 WHERE list_id IN (SELECT id FROM j16_jnews_lists WHERE list_name=%s) AND subscriber_id = (SELECT id FROM j16_jnews_subscribers WHERE email=%s)"
+                sql = "UPDATE IGNORE 2gWw_jnews_listssubscribers SET unsubdate=%s, unsubscribe=1 WHERE list_id IN (SELECT id FROM 2gWw_jnews_lists WHERE list_name=%s) AND subscriber_id = (SELECT id FROM 2gWw_jnews_subscribers WHERE email=%s)"
                 dosql(c, sql, value, options.dryrun)
                 # Subscribe new
                 sql, value = prepare_subscribe_query(v[0], v[1])
