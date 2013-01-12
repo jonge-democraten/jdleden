@@ -33,6 +33,7 @@ REGIO = 12
 STEMRECHT = 15
 # Aid to detect input-format changes
 EXPECTED_INPUT_COLUMNS = 16  # Columns 0 to 15 (incl.)
+EXPECTED_HEADERS = ['Lidnummer', 'Lidsoort', 'Lid sinds', 'Lid beeindigd', 'Volledige naam', 'Geslacht', 'Geboortedatum', 'Straat', 'Postcode', 'Plaats', 'Emailadres', 'Afdeling', 'Regio', 'Telefoonnummer', 'Mobiel', 'Stemrecht']
 # Extra columns not present in input-format
 VOORNAAM = 16
 ACHTERNAAM = 17
@@ -75,6 +76,11 @@ def read_xls(f):
     book = xlrd.open_workbook(f)
     sheet = book.sheet_by_index(0)
     leden = {}
+    # Confirm first row matches with expectations
+    if sheet.row_values(0) != EXPECTED_HEADERS:
+        logger.critical("First row does not match expectations, possible format-change")
+        sys.exit(1)
+    # Store all members in dict by member-number
     for i in xrange(1,sheet.nrows-1):  # Skip header and "Totaal:" row
         row = sheet.row(i)
         if len(row) != EXPECTED_INPUT_COLUMNS:
