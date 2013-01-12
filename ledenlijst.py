@@ -75,13 +75,25 @@ def read_xls(f):
     # Read xls file from disk
     book = xlrd.open_workbook(f)
     sheet = book.sheet_by_index(0)
+    lastrow = sheet.nrows-1
     leden = {}
     # Confirm first row matches with expectations
     if sheet.row_values(0) != EXPECTED_HEADERS:
         logger.critical("First row does not match expectations, possible format-change")
         sys.exit(1)
+    # Confirm last row is a sensible total
+    if sheet.cell_value(lastrow, 0) != 'Totaal':
+        logger.critical("Last row does not seem to be a Total, possible format-change")
+        sys.exit(1)
+    # XXX adjust this number if JD grows or shrinks
+    if sheet.cell_value(lastrow, 1) not in xrange(4000,6000):
+        logger.critical("Number of members in last row very different from hardcoded safeguard")
+        sys.exit(1)
+    if sheet.nrows not in xrange(4000,6000):
+        logger.critical("Total number of rows very different from hardcoded safeguard")
+        sys.exit(1)
     # Store all members in dict by member-number
-    for i in xrange(1,sheet.nrows-1):  # Skip header and "Totaal:" row
+    for i in xrange(1,lastrow):  # Skip header and "Totaal:" row
         row = sheet.row(i)
         if len(row) != EXPECTED_INPUT_COLUMNS:
             # If this happens, consult comment near constants
