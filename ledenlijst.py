@@ -76,6 +76,7 @@ COLUMN_WIDTH = [
 config = ConfigParser.RawConfigParser()
 config.read(os.path.join(SCRIPTDIR, "ledenlijst.cfg"))
 dbcfg = dict(config.items("database"))
+ldapcfg = dict(config.items("ldapcfg"))
 
 # Set up logging to console, debug.log and info.log
 logger = logging.getLogger()
@@ -449,13 +450,13 @@ def doldap_remove(id):
     try:    
         l.simple_bind_s(ldapcfg["dn"], ldapcfg["password"])
     except ldap.LDAPError, e:
-        print e
+        logger.critical(str(e))
     
     dn_to_delete = "cn="+str(int(id))+",ou=users,dc=jd,dc=nl"
     try:
         l.delete_s(dn_to_delete)
     except ldap.LDAPError, e:
-        print e
+        logger.warning(str(e) + " - Could not remove - "+str(int(id)))
     l.unbind_s();
 
 def doldap_add(lidnummer, naam, mail, afdeling):
@@ -463,9 +464,9 @@ def doldap_add(lidnummer, naam, mail, afdeling):
     try:
         l.simple_bind_s(ldapcfg["dn"], ldapcfg["password"])
     except ldap.LDAPError, e:
-        print e
+        logger.critical(str(e))
 
-    dn_to_add = "cn="+str(int(id))+",ou=users,dc=jd,dc=nl"
+    dn_to_add = "cn="+str(int(lidnummer))+",ou=users,dc=jd,dc=nl"
     attrs = {}
     attrs['objectclass'] = ['inetOrgPerson']
     attrs['sn'] = naam.encode('utf-8')
@@ -476,7 +477,7 @@ def doldap_add(lidnummer, naam, mail, afdeling):
     try:
         l.add_s(dn_to_add, ldif)
     except ldap.LDAPError, e:
-        print e
+        logger.warning(str(e) + " - Could not add - "+str(int(lidnummer)))
     l.unbind_s()
 
 def doldap_modify(lidnummer, naam, mail, afdeling):
@@ -484,16 +485,16 @@ def doldap_modify(lidnummer, naam, mail, afdeling):
     try:
         l.simple_bind_s(ldapcfg["dn"], ldapcfg["password"])
     except ldap.LDAPError, e:
-        print e
+        logger.critical(str(e))
 
-    dn_to_mod = "cn="+str(int(id))+",ou=users,dc=jd,dc=nl"
+    dn_to_mod = "cn="+str(int(lidnummer))+",ou=users,dc=jd,dc=nl"
 
     attrs = [(ldap.MOD_REPLACE, "sn", naam.encode('utf-8')), (ldap.MOD_REPLACE, "mail", mail.encode('utf-8')), (ldap.MOD_REPLACE, "ou", afdeling)]
 
     try:
         l.modify_s(dn_to_mod, attrs)
     except ldap.LDAPError, e:
-        print e
+        logger.warning(str(e) + " - Could not modify - "+str(int(lidnummer)))
     l.unbind_s()
 
 
