@@ -142,10 +142,10 @@ Usage: %prog [options] arguments
     else:
       logger.critical("Wrong old.xls")
       sys.exit(1)
-# This code needs to exist above only_jnews- and only_excel-blocks
-# because it applies to both.
-      # When running in regular- or only_jnews-mode, require 2 args and check sanity
-      # When running in only_excel-mode, require 1 arg
+  # This code needs to exist above only_jnews- and only_excel-blocks
+  # because it applies to both.
+  # When running in regular- or only_jnews-mode, require 2 args and check sanity
+  # When running in only_excel-mode, require 1 arg
   logger.info("Reading %s ..." % newfile)
   new = read_xls(newfile)
   logger.info("Reading complete")
