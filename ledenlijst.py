@@ -105,43 +105,9 @@ Usage: %prog [options] arguments
   parser.add_option("-x", "--excel", action="store_true", dest="only_excel", help="only generate Excel-files per department")
 # Read options and check sanity
   options, args = parser.parse_args()
-  # Detect which mode we run as and check sanity
-  if options.only_jnews and options.only_excel:
-    parser.error("options -j and -x are mutually exclusive")
-  elif options.only_excel:
-    if len(args) != 1:
-      parser.error("need 1 argument: new.xls")
-    newfile = args[0]
-  else:
-    if len(args) != 2:
-      parser.error("need 2 arguments: old.xls new.xls")
-    logger.info("Verifying sanity of input files")
-    csumfile = os.path.join(SCRIPTDIR, "checksum.txt")
-    oldfile = args[0]
-    newfile = args[1]
-    with open(oldfile, "r") as f:
-      oldsha = hashlib.sha512(f.read()).hexdigest()
-    with open(newfile, "r") as f:
-      newsha = hashlib.sha512(f.read()).hexdigest()
-    try:
-      f = open(csumfile, "r")
-    except IOError as e:
-  # If no checksum.txt exists, pretend it was correct
-      if e.errno == errno.ENOENT:
-        logger.warning("Will create new checksum.txt")
-        storedsha = oldsha
-      else:
-        raise
-    else:
-      storedsha = f.readline().split()[0] # Read sha512sum-compatible checksum-file
-    
-    if oldsha == storedsha:
-      with open(csumfile, "w") as f: # Write sha512sum-compatible checksum-file
-        f.write("%s  %s\n" % (newsha, newfile))
-      logger.info("Input files are sane")
-    else:
-      logger.critical("Wrong old.xls")
-      sys.exit(1)
+  
+  newfile, oldfile = parse_options(parser, options, args)
+  
   # This code needs to exist above only_jnews- and only_excel-blocks
   # because it applies to both.
   # When running in regular- or only_jnews-mode, require 2 args and check sanity
@@ -156,8 +122,8 @@ Usage: %prog [options] arguments
     outdir = os.path.join("uitvoer", time.strftime("%F %T"))
     trymkdir(outdir, 0700)
     for dept in split.keys():
-      f = os.path.join(outdir, dept + ".xls")
-      write_xls(f, split[dept])
+      fileDepartment = os.path.join(outdir, dept + ".xls")
+      write_xls(fileDepartment, split[dept])
     
     logger.info("Department-xls complete") # Don't run this block in Excel-only-mode
   if not options.only_excel:
@@ -242,7 +208,52 @@ Usage: %prog [options] arguments
         dosql(c, sql, value, options.dryrun)
     
     logger.info("Moving complete")
+
     
+def parse_options(parser, options, args):
+  # Detect which mode we run as and check sanity
+  newfile = ""
+  oldfile = ""
+  
+  if options.only_jnews and options.only_excel:
+    parser.error("options -j and -x are mutually exclusive")
+  elif options.only_excel:
+    if len(args) != 1:
+      parser.error("need 1 argument: new.xls")
+    newfile = args[0]
+  else:
+    if len(args) != 2:
+      parser.error("need 2 arguments: old.xls new.xls")
+    logger.info("Verifying sanity of input files")
+    csumfile = os.path.join(SCRIPTDIR, "checksum.txt")
+    oldfile = args[0]
+    newfile = args[1]
+    with open(oldfile, "r") as f:
+      oldsha = hashlib.sha512(f.read()).hexdigest()
+    with open(newfile, "r") as f:
+      newsha = hashlib.sha512(f.read()).hexdigest()
+    try:
+      f = open(csumfile, "r")
+    except IOError as e:
+      # If no checksum.txt exists, pretend it was correct
+      if e.errno == errno.ENOENT:
+        logger.warning("Will create new checksum.txt")
+        storedsha = oldsha
+      else:
+        raise
+    else:
+      storedsha = f.readline().split()[0] # Read sha512sum-compatible checksum-file
+    
+    if oldsha == storedsha:
+      with open(csumfile, "w") as f: # Write sha512sum-compatible checksum-file
+        f.write("%s  %s\n" % (newsha, newfile))
+      logger.info("Input files are sane")
+    else:
+      logger.critical("Wrong old.xls")
+      sys.exit(1)
+      
+  return newfile, oldfile
+
 
 def read_xls(f):
     # Read xls file from disk
