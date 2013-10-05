@@ -115,7 +115,7 @@ Usage: %prog [options] arguments
   logger.info("Reading %s ..." % newfile)
   new = read_xls(newfile)
   logger.info("Reading complete")
-      # Don't run this block in jNews-only-mode
+  # Don't run this block in jNews-only-mode
   if not options.only_jnews:
     logger.info("Handling department-xls...")
     split = split_by_department(new)
@@ -125,7 +125,8 @@ Usage: %prog [options] arguments
       fileDepartment = os.path.join(outdir, dept + ".xls")
       write_xls(fileDepartment, split[dept])
     
-    logger.info("Department-xls complete") # Don't run this block in Excel-only-mode
+    logger.info("Department-xls complete") 
+  # Don't run this block in Excel-only-mode
   if not options.only_excel:
     logger.info("Reading %s ..." % oldfile)
     old = read_xls(oldfile)
