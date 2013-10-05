@@ -118,14 +118,8 @@ Usage: %prog [options] arguments
   # Don't run this block in jNews-only-mode
   if not options.only_jnews:
     logger.info("Handling department-xls...")
-    split = split_by_department(new)
-    outdir = os.path.join("uitvoer", time.strftime("%F %T"))
-    trymkdir(outdir, 0700)
-    for dept in split.keys():
-      fileDepartment = os.path.join(outdir, dept + ".xls")
-      write_xls(fileDepartment, split[dept])
-    
-    logger.info("Department-xls complete") 
+    write_department_excels(new) 
+    logger.info("Department-xls complete")
   # Don't run this block in Excel-only-mode
   if not options.only_excel:
     logger.info("Reading %s ..." % oldfile)
@@ -141,75 +135,88 @@ Usage: %prog [options] arguments
     # independent subscription-vectors (webform and D66 administration).
     db = MySQLdb.connect(user=dbcfg["user"], passwd=dbcfg["password"], db=dbcfg["name"])
     c = db.cursor()
+    
     # Remove old members
     logger.info("Removing members...")
-    for m in min:
-      value = NOW, min[m][EMAIL]
-      sql = "UPDATE IGNORE 2gWw_jnews_listssubscribers SET unsubdate=%s, unsubscribe=1 WHERE subscriber_id = (SELECT id FROM 2gWw_jnews_subscribers WHERE email=%s)"
-      dosql(c, sql, value, options.dryrun)
-    
+    remove_members(min, c, options.dryrun)
     logger.info("Removing complete")
     # Update changed members
     logger.info("Updating changed members...")
-    moved = {}
-    for id in changed.keys():
-      if (changed[id][NAAM] != old[id][NAAM] or changed[id][EMAIL] != old[id][EMAIL]):
-        name = format_name(changed[id][NAAM], changed[id][VOORNAAM], changed[id][ACHTERNAAM])
-        value = name, changed[id][EMAIL], old[id][EMAIL]
-        sql = "UPDATE IGNORE 2gWw_jnews_subscribers SET name=%s, email=%s WHERE email=%s"
-        dosql(c, sql, value, options.dryrun) # Check if member has moved to a new department
-      if (changed[id][POSTCODE] != old[id][POSTCODE]): # Only resubscribe if department actually changes
-        newdept = find_department(parse_postcode(changed[id][POSTCODE]))
-        olddept = find_department(parse_postcode(old[id][POSTCODE]))
-        if (newdept != olddept):
-          moved[id] = changed[id]
-    
-    moved_split = split_by_department(moved)
+    moved = update_changed_members(old, changed, c, options.dryrun)
     logger.info("Changes complete")
     # Add new members
     logger.info("Adding new members...")
-    for d in plus_split.keys():
-      for id in plus_split[d].keys():
-        name = format_name(plus_split[d][id][NAAM], plus_split[d][id][VOORNAAM], plus_split[d][id][ACHTERNAAM])
-        value = name, plus_split[d][id][EMAIL], 1, NOW
-        sql = "INSERT INTO 2gWw_jnews_subscribers (name, email, confirmed, subscribe_date) VALUES (%s, %s, %s, %s) ON DUPLICATE KEY UPDATE id=id"
-        dosql(c, sql, value, options.dryrun)
-    
+    add_members_to_database(plus_split, c, options.dryrun)
     logger.info("Adding complete")
     # Add the new members to their department
     logger.info("Subscribing new members to lists...")
-    for d in plus_split.keys():
-      values = []
-      for id in plus_split[d].keys():
-        email = db.escape_string(plus_split[d][id][EMAIL])
-        values.append((email, "Digizine", "Nieuwsbrief " + d))
-      
-      for v in values: # Digizine
-        sql, value = prepare_subscribe_query(v[0], v[1])
-        dosql(c, sql, value, options.dryrun) # Afdelingsnieuwsbrief
-        sql, value = prepare_subscribe_query(v[0], v[2])
-        dosql(c, sql, value, options.dryrun)
-    
+    subscribe_members_to_maillist(plus_split, db, c, options.dryrun)
     logger.info("Subscribing complete") # Unsubscribe moved members from old department and subscribe to new department
     # FIXME DRY
     logger.info("Moving members to new departments...")
-    for d in moved_split.keys():
-      values = []
-      for id in moved_split[d].keys():
-        email = db.escape_string(moved_split[d][id][EMAIL])
-        values.append((email, "Nieuwsbrief " + d))
-      
-      for v in values: # Unsubscribe old
-        olddept = find_department(parse_postcode(old[id][POSTCODE]))
-        oldlist = "Nieuwsbrief " + olddept
-        value = NOW, oldlist, v[0]
-        sql = "UPDATE IGNORE 2gWw_jnews_listssubscribers SET unsubdate=%s, unsubscribe=1 WHERE list_id IN (SELECT id FROM 2gWw_jnews_lists WHERE list_name=%s) AND subscriber_id = (SELECT id FROM 2gWw_jnews_subscribers WHERE email=%s)"
-        dosql(c, sql, value, options.dryrun) # Subscribe new
-        sql, value = prepare_subscribe_query(v[0], v[1])
-        dosql(c, sql, value, options.dryrun)
-    
+    moved_split = split_by_department(moved)
+    move_members_to_new_department(old, db, c, moved_split, options.dryrun)
     logger.info("Moving complete")
+    
 
+def remove_members(min, c, is_dryrun):
+  for m in min:
+    value = NOW, min[m][EMAIL]
+    sql = "UPDATE IGNORE 2gWw_jnews_listssubscribers SET unsubdate=%s, unsubscribe=1 WHERE subscriber_id = (SELECT id FROM 2gWw_jnews_subscribers WHERE email=%s)"
+    dosql(c, sql, value, is_dryrun)
+    
+def update_changed_members(old, changed, c, is_dryrun):
+  moved = {}
+  for id in changed.keys():
+    if (changed[id][NAAM] != old[id][NAAM] or changed[id][EMAIL] != old[id][EMAIL]):
+      name = format_name(changed[id][NAAM], changed[id][VOORNAAM], changed[id][ACHTERNAAM])
+      value = name, changed[id][EMAIL], old[id][EMAIL]
+      sql = "UPDATE IGNORE 2gWw_jnews_subscribers SET name=%s, email=%s WHERE email=%s"
+      dosql(c, sql, value, is_dryrun) # Check if member has moved to a new department
+    if (changed[id][POSTCODE] != old[id][POSTCODE]): # Only resubscribe if department actually changes
+      newdept = find_department(parse_postcode(changed[id][POSTCODE]))
+      olddept = find_department(parse_postcode(old[id][POSTCODE]))
+      if (newdept != olddept):
+        moved[id] = changed[id]
+  
+  return moved
+
+def add_members_to_database(plus_split, c, is_dryrun):
+  for d in plus_split.keys():
+    for id in plus_split[d].keys():
+      name = format_name(plus_split[d][id][NAAM], plus_split[d][id][VOORNAAM], plus_split[d][id][ACHTERNAAM])
+      value = name, plus_split[d][id][EMAIL], 1, NOW
+      sql = "INSERT INTO 2gWw_jnews_subscribers (name, email, confirmed, subscribe_date) VALUES (%s, %s, %s, %s) ON DUPLICATE KEY UPDATE id=id"
+      dosql(c, sql, value, is_dryrun)
+      
+def subscribe_members_to_maillist(plus_split, db, c, is_dryrun):
+  for d in plus_split.keys():
+    values = []
+    for id in plus_split[d].keys():
+      email = db.escape_string(plus_split[d][id][EMAIL])
+      values.append((email, "Digizine", "Nieuwsbrief " + d))
+    
+    for v in values: # Digizine
+      sql, value = prepare_subscribe_query(v[0], v[1])
+      dosql(c, sql, value, is_dryrun) # Afdelingsnieuwsbrief
+      sql, value = prepare_subscribe_query(v[0], v[2])
+      dosql(c, sql, value, is_dryrun)  
+
+def move_members_to_new_department(old, db, c, moved_split, is_dryrun):
+  for d in moved_split.keys():
+    values = []
+    for id in moved_split[d].keys():
+      email = db.escape_string(moved_split[d][id][EMAIL])
+      values.append((email, "Nieuwsbrief " + d))
+    
+    for v in values: # Unsubscribe old
+      olddept = find_department(parse_postcode(old[id][POSTCODE]))
+      oldlist = "Nieuwsbrief " + olddept
+      value = NOW, oldlist, v[0]
+      sql = "UPDATE IGNORE 2gWw_jnews_listssubscribers SET unsubdate=%s, unsubscribe=1 WHERE list_id IN (SELECT id FROM 2gWw_jnews_lists WHERE list_name=%s) AND subscriber_id = (SELECT id FROM 2gWw_jnews_subscribers WHERE email=%s)"
+      dosql(c, sql, value, is_dryrun) # Subscribe new
+      sql, value = prepare_subscribe_query(v[0], v[1])
+      dosql(c, sql, value, is_dryrun)
     
 def parse_options(parser, options, args):
   # Detect which mode we run as and check sanity
@@ -255,6 +262,14 @@ def parse_options(parser, options, args):
       
   return newfile, oldfile
 
+def write_department_excels(new):
+  split = split_by_department(new)
+  outdir = os.path.join("uitvoer", time.strftime("%F %T"))
+  trymkdir(outdir, 0700)
+  for dept in split.keys():
+    fileDepartment = os.path.join(outdir, dept + ".xls")
+    write_xls(fileDepartment, split[dept])
+  
 
 def read_xls(f):
     # Read xls file from disk
