@@ -126,9 +126,9 @@ Usage: %prog [options] arguments
     old = read_xls(oldfile)
     logger.info("Reading complete")
     logger.info("Computing changes...")
-    plus, min = get_new_and_former_members(old, new)
-    changed = get_changed_members(old, new)
-    plus_split = split_by_department(plus)
+    new_members, former_members = get_new_and_former_members(old, new)
+    changed_members = get_changed_members(old, new)
+    current_members_per_dep = split_by_department(new_members)
     logger.info("Computing complete")
     # Use email-address instead of member-id to identify subscriptions.
     # Member-id cannot be used because of risk of collisions from two
@@ -138,19 +138,19 @@ Usage: %prog [options] arguments
     
     # Remove old members
     logger.info("Removing members...")
-    remove_members(min, c, options.dryrun)
+    remove_members(former_members, c, options.dryrun)
     logger.info("Removing complete")
     # Update changed members
     logger.info("Updating changed members...")
-    moved = update_changed_members(old, changed, c, options.dryrun)
+    moved = update_changed_members(old, changed_members, c, options.dryrun)
     logger.info("Changes complete")
     # Add new members
     logger.info("Adding new members...")
-    add_members_to_database(plus_split, c, options.dryrun)
+    add_members_to_database(current_members_per_dep, c, options.dryrun)
     logger.info("Adding complete")
     # Add the new members to their department
     logger.info("Subscribing new members to lists...")
-    subscribe_members_to_maillist(plus_split, db, c, options.dryrun)
+    subscribe_members_to_maillist(current_members_per_dep, db, c, options.dryrun)
     logger.info("Subscribing complete") # Unsubscribe moved members from old department and subscribe to new department
     # FIXME DRY
     logger.info("Moving members to new departments...")
