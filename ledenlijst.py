@@ -99,7 +99,7 @@ logger.addHandler(fhi)
 def main():
   # Define command-line options
   usage = """\
-Usage: %prog [options] arguments
+  Usage: %prog [options] arguments
   in regular and jNews-only-mode, arguments is 2 files: old.xls new.xls
   in Excel-only-mode, arguments is 1 file: new.xls"""
   parser = OptionParser(usage)
