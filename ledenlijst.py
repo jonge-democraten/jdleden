@@ -138,6 +138,9 @@ Usage: %prog [options] arguments
     # independent subscription-vectors (webform and D66 administration).
     db = MySQLdb.connect(user=dbcfg["user"], passwd=dbcfg["password"], db=dbcfg["name"])
     c = db.cursor()
+
+    # Make everything transactional so we can rollback on errors
+    c.begin()
     
     # Remove old members
     logger.info("Removing members...")
@@ -160,6 +163,9 @@ Usage: %prog [options] arguments
     moved_split = split_by_department(moved)
     move_members_to_new_department(old, db, c, moved_split, options.dryrun)
     logger.info("Moving complete")
+
+    # If we end up here, assume everything is alright
+    c.commit()
     
 
 def remove_members(min, c, is_dryrun):
