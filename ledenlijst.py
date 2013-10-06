@@ -137,10 +137,10 @@ Usage: %prog [options] arguments
     # Member-id cannot be used because of risk of collisions from two
     # independent subscription-vectors (webform and D66 administration).
     db = MySQLdb.connect(user=dbcfg["user"], passwd=dbcfg["password"], db=dbcfg["name"])
-    c = db.cursor()
 
     # Make everything transactional so we can rollback on errors
-    c.begin()
+    db.begin()
+    c = db.cursor()
     
     # Remove old members
     logger.info("Removing members...")
@@ -165,7 +165,7 @@ Usage: %prog [options] arguments
     logger.info("Moving complete")
 
     # If we end up here, assume everything is alright
-    c.commit()
+    db.commit()
     
 
 def remove_members(min, c, is_dryrun):
