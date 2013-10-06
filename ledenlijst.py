@@ -108,6 +108,7 @@ def main():
   parser.add_option("-x", "--excel", action="store_true", dest="only_excel", help="only generate Excel-files per department")
 # Read options and check sanity
   options, args = parser.parse_args()
+  log_script_arguments()
   
   newfile, oldfile = parse_options(parser, options, args)
   
@@ -420,6 +421,12 @@ def dosql(c, sql, value, dryrun=False):
             logger.error("Error executing previous query")
     for msg in c.messages:
         logger.debug(msg)
+
+def log_script_arguments():
+  commandArguments = "Start script with command: "
+  for arg in sys.argv:
+    commandArguments += arg + " "
+  logger.info(commandArguments)
 
 def trymkdir(dir, perm=0700):
     # Make directory if needed
