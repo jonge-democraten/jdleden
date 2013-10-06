@@ -173,12 +173,14 @@ def remove_members(min, c, is_dryrun):
     value = NOW, min[m][EMAIL]
     sql = "UPDATE IGNORE 2gWw_jnews_listssubscribers SET unsubdate=%s, unsubscribe=1 WHERE subscriber_id = (SELECT id FROM 2gWw_jnews_subscribers WHERE email=%s)"
     dosql(c, sql, value, is_dryrun)
-    doldap_remove(m)
+    if not is_dryrun:
+      doldap_remove(m)
     
 def update_changed_members(old, changed, c, is_dryrun):
   moved = {}
   for id in changed.keys():
-    doldap_modify(changed[id][LIDNUMMER], format_name(changed[id][NAAM], changed[id][VOORNAAM], changed[id][ACHTERNAAM]), changed[id][EMAIL], find_department(parse_postcode(changed[id][POSTCODE]))) 
+    if not is_dryrun:
+      doldap_modify(changed[id][LIDNUMMER], format_name(changed[id][NAAM], changed[id][VOORNAAM], changed[id][ACHTERNAAM]), changed[id][EMAIL], find_department(parse_postcode(changed[id][POSTCODE]))) 
     if (changed[id][NAAM] != old[id][NAAM] or changed[id][EMAIL] != old[id][EMAIL]):
       name = format_name(changed[id][NAAM], changed[id][VOORNAAM], changed[id][ACHTERNAAM])
       value = name, changed[id][EMAIL], old[id][EMAIL]
@@ -198,7 +200,8 @@ def add_members_to_database(plus_split, c, is_dryrun):
       value = name, plus_split[d][id][EMAIL], 1, NOW
       sql = "INSERT INTO 2gWw_jnews_subscribers (name, email, confirmed, subscribe_date) VALUES (%s, %s, %s, %s) ON DUPLICATE KEY UPDATE id=id"
       dosql(c, sql, value, is_dryrun)
-      doldap_add(plus_split[d][id][LIDNUMMER], name, plus_split[d][id][EMAIL], d)
+      if not is_dryrun:
+        doldap_add(plus_split[d][id][LIDNUMMER], name, plus_split[d][id][EMAIL], d)
       
 def subscribe_members_to_maillist(plus_split, db, c, is_dryrun):
   for d in plus_split.keys():
