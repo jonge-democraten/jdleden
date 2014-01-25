@@ -122,7 +122,7 @@ def main():
     # Don't run this block in jNews-only-mode
     if not options.only_jnews:
         logger.info("Handling department-xls...")
-        write_department_excels(new)
+        write_department_excels(new, "uitvoer")
         logger.info("Department-xls complete")
     # Don't run this block in Excel-only-mode
     if not options.only_excel:
@@ -158,11 +158,12 @@ def main():
         # Add the new members to their department
         logger.info("Subscribing new members to lists...")
         subscribe_members_to_maillist(current_members_per_dep, db, c, options.dryrun)
-        logger.info("Subscribing complete") # Unsubscribe moved members from old department and subscribe to new department
-        # FIXME DRY
+        logger.info("Subscribing complete") 
+        # Unsubscribe moved members from old department and subscribe to new department
         logger.info("Moving members to new departments...")
         moved_split = split_by_department(moved)
         move_members_to_new_department(old, db, c, moved_split, options.dryrun)
+        write_department_excels(moved, "verhuisd")
         logger.info("Moving complete")
 
         # If we end up here, assume everything is alright
@@ -224,12 +225,14 @@ def move_members_to_new_department(old, db, c, moved_split, is_dryrun):
             email = db.escape_string(moved_split[d][id][EMAIL])
             values.append((email, "Nieuwsbrief " + d))
 
-        for v in values: # Unsubscribe old
+        for v in values:
             olddept = find_department(parse_postcode(old[id][POSTCODE]))
             oldlist = "Nieuwsbrief " + olddept
             value = NOW, oldlist, v[0]
+            # Unsubscribe old
             sql = "UPDATE IGNORE 2gWw_jnews_listssubscribers SET unsubdate=%s, unsubscribe=1 WHERE list_id IN (SELECT id FROM 2gWw_jnews_lists WHERE list_name=%s) AND subscriber_id = (SELECT id FROM 2gWw_jnews_subscribers WHERE email=%s)"
-            dosql(c, sql, value, is_dryrun) # Subscribe new
+            dosql(c, sql, value, is_dryrun) 
+            # Subscribe new
             sql, value = prepare_subscribe_query(v[0], v[1])
             dosql(c, sql, value, is_dryrun)
 
@@ -272,14 +275,14 @@ def parse_options(parser, options, args):
                 f.write("%s  %s\n" % (newsha, newfile))
             logger.info("Input files are sane")
         else:
-            logger.critical("Wrong old.xls")
+            logger.critical("Wrong old.xls (according to chechsum). Please contact the ICT-team if you are not completely sure what to do.")
             sys.exit(1)
 
     return newfile, oldfile
 
-def write_department_excels(new):
+def write_department_excels(new, directory_name):
     split = split_by_department(new)
-    outdir = os.path.join("uitvoer", time.strftime("%F %T"))
+    outdir = os.path.join(directory_name, time.strftime("%F %T"))
     trymkdir(outdir, 0700)
     for dept in split.keys():
         fileDepartment = os.path.join(outdir, dept + ".xls")
