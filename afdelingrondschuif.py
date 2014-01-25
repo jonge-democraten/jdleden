@@ -7,14 +7,8 @@ import MySQLdb
 
 import ledenlijst
 
-def get_reallocated_members(members, pc_lo, pc_hi):
-    # Return only members in specified postcode range
-    reallocated = filter(lambda id:
-            pc_lo <= ledenlijst.parse_postcode(members[id][ledenlijst.POSTCODE]) <= pc_hi,
-            members)
-    return dict([(id, members[id]) for id in reallocated])
 
-if __name__ == "__main__":
+def main():
     # Define command-line options
     usage = """\
 Usage: %prog [options] ledenlijst.xls oude_afdeling postcode_laag postcode_hoog"""
@@ -65,3 +59,15 @@ Usage: %prog [options] ledenlijst.xls oude_afdeling postcode_laag postcode_hoog"
         value = (ledenlijst.NOW, oldlist, email)
         sql = "UPDATE IGNORE 2gWw_jnews_listssubscribers SET unsubdate=%s, unsubscribe=1 WHERE list_id IN (SELECT id FROM 2gWw_jnews_lists WHERE list_name=%s) AND subscriber_id = (SELECT id FROM 2gWw_jnews_subscribers WHERE email=%s)"
         ledenlijst.dosql(c, sql, value, options.dryrun)
+        
+        
+def get_reallocated_members(members, pc_lo, pc_hi):
+    # Return only members in specified postcode range
+    reallocated = filter(lambda id:
+            pc_lo <= ledenlijst.parse_postcode(members[id][ledenlijst.POSTCODE]) <= pc_hi,
+            members)
+    return dict([(id, members[id]) for id in reallocated])
+
+        
+if __name__ == "__main__":
+    main()
