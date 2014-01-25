@@ -97,197 +97,197 @@ logger.addHandler(fhi)
 
 
 def main():
-  # Define command-line options
-  usage = """\
-  %prog [options] arguments
-  in regular and jNews-only-mode, arguments is 2 files: old.xls new.xls
-  in Excel-only-mode, arguments is 1 file: new.xls"""
-  parser = OptionParser(usage)
-  parser.add_option("-n", "--dryrun", action="store_true", dest="dryrun", help="don't execute any SQL")
-  parser.add_option("-j", "--jnews", action="store_true", dest="only_jnews", help="only update jNews-subscriptions")
-  parser.add_option("-x", "--excel", action="store_true", dest="only_excel", help="only generate Excel-files per department")
-# Read options and check sanity
-  options, args = parser.parse_args()
-  log_script_arguments()
-  
-  newfile, oldfile = parse_options(parser, options, args)
-  
-  # This code needs to exist above only_jnews- and only_excel-blocks
-  # because it applies to both.
-  # When running in regular- or only_jnews-mode, require 2 args and check sanity
-  # When running in only_excel-mode, require 1 arg
-  logger.info("Reading %s ..." % newfile)
-  new = read_xls(newfile)
-  logger.info("Reading complete")
-  # Don't run this block in jNews-only-mode
-  if not options.only_jnews:
-    logger.info("Handling department-xls...")
-    write_department_excels(new) 
-    logger.info("Department-xls complete")
-  # Don't run this block in Excel-only-mode
-  if not options.only_excel:
-    logger.info("Reading %s ..." % oldfile)
-    old = read_xls(oldfile)
+    # Define command-line options
+    usage = """\
+    %prog [options] arguments
+    in regular and jNews-only-mode, arguments is 2 files: old.xls new.xls
+    in Excel-only-mode, arguments is 1 file: new.xls"""
+    parser = OptionParser(usage)
+    parser.add_option("-n", "--dryrun", action="store_true", dest="dryrun", help="don't execute any SQL")
+    parser.add_option("-j", "--jnews", action="store_true", dest="only_jnews", help="only update jNews-subscriptions")
+    parser.add_option("-x", "--excel", action="store_true", dest="only_excel", help="only generate Excel-files per department")
+    # Read options and check sanity
+    options, args = parser.parse_args()
+    log_script_arguments()
+
+    newfile, oldfile = parse_options(parser, options, args)
+
+    # This code needs to exist above only_jnews- and only_excel-blocks
+    # because it applies to both.
+    # When running in regular- or only_jnews-mode, require 2 args and check sanity
+    # When running in only_excel-mode, require 1 arg
+    logger.info("Reading %s ..." % newfile)
+    new = read_xls(newfile)
     logger.info("Reading complete")
-    logger.info("Computing changes...")
-    new_members, former_members = get_new_and_former_members(old, new)
-    changed_members = get_changed_members(old, new)
-    current_members_per_dep = split_by_department(new_members)
-    logger.info("Computing complete")
-    # Use email-address instead of member-id to identify subscriptions.
-    # Member-id cannot be used because of risk of collisions from two
-    # independent subscription-vectors (webform and D66 administration).
-    db = MySQLdb.connect(user=dbcfg["user"], passwd=dbcfg["password"], db=dbcfg["name"])
+    # Don't run this block in jNews-only-mode
+    if not options.only_jnews:
+        logger.info("Handling department-xls...")
+        write_department_excels(new)
+        logger.info("Department-xls complete")
+    # Don't run this block in Excel-only-mode
+    if not options.only_excel:
+        logger.info("Reading %s ..." % oldfile)
+        old = read_xls(oldfile)
+        logger.info("Reading complete")
+        logger.info("Computing changes...")
+        new_members, former_members = get_new_and_former_members(old, new)
+        changed_members = get_changed_members(old, new)
+        current_members_per_dep = split_by_department(new_members)
+        logger.info("Computing complete")
+        # Use email-address instead of member-id to identify subscriptions.
+        # Member-id cannot be used because of risk of collisions from two
+        # independent subscription-vectors (webform and D66 administration).
+        db = MySQLdb.connect(user=dbcfg["user"], passwd=dbcfg["password"], db=dbcfg["name"])
 
-    # Make everything transactional so we can rollback on errors
-    db.begin()
-    c = db.cursor()
-    
-    # Remove old members
-    logger.info("Removing members...")
-    remove_members(former_members, c, options.dryrun)
-    logger.info("Removing complete")
-    # Update changed members
-    logger.info("Updating changed members...")
-    moved = update_changed_members(old, changed_members, c, options.dryrun)
-    logger.info("Changes complete")
-    # Add new members
-    logger.info("Adding new members...")
-    add_members_to_database(current_members_per_dep, c, options.dryrun)
-    logger.info("Adding complete")
-    # Add the new members to their department
-    logger.info("Subscribing new members to lists...")
-    subscribe_members_to_maillist(current_members_per_dep, db, c, options.dryrun)
-    logger.info("Subscribing complete") # Unsubscribe moved members from old department and subscribe to new department
-    # FIXME DRY
-    logger.info("Moving members to new departments...")
-    moved_split = split_by_department(moved)
-    move_members_to_new_department(old, db, c, moved_split, options.dryrun)
-    logger.info("Moving complete")
+        # Make everything transactional so we can rollback on errors
+        db.begin()
+        c = db.cursor()
 
-    # If we end up here, assume everything is alright
-    db.commit()
-    
+        # Remove old members
+        logger.info("Removing members...")
+        remove_members(former_members, c, options.dryrun)
+        logger.info("Removing complete")
+        # Update changed members
+        logger.info("Updating changed members...")
+        moved = update_changed_members(old, changed_members, c, options.dryrun)
+        logger.info("Changes complete")
+        # Add new members
+        logger.info("Adding new members...")
+        add_members_to_database(current_members_per_dep, c, options.dryrun)
+        logger.info("Adding complete")
+        # Add the new members to their department
+        logger.info("Subscribing new members to lists...")
+        subscribe_members_to_maillist(current_members_per_dep, db, c, options.dryrun)
+        logger.info("Subscribing complete") # Unsubscribe moved members from old department and subscribe to new department
+        # FIXME DRY
+        logger.info("Moving members to new departments...")
+        moved_split = split_by_department(moved)
+        move_members_to_new_department(old, db, c, moved_split, options.dryrun)
+        logger.info("Moving complete")
+
+        # If we end up here, assume everything is alright
+        db.commit()
+
 
 def remove_members(min, c, is_dryrun):
-  for m in min:
-    value = NOW, min[m][EMAIL]
-    sql = "UPDATE IGNORE 2gWw_jnews_listssubscribers SET unsubdate=%s, unsubscribe=1 WHERE subscriber_id = (SELECT id FROM 2gWw_jnews_subscribers WHERE email=%s)"
-    dosql(c, sql, value, is_dryrun)
-    if not is_dryrun:
-      doldap_remove(m)
-    
+    for m in min:
+        value = NOW, min[m][EMAIL]
+        sql = "UPDATE IGNORE 2gWw_jnews_listssubscribers SET unsubdate=%s, unsubscribe=1 WHERE subscriber_id = (SELECT id FROM 2gWw_jnews_subscribers WHERE email=%s)"
+        dosql(c, sql, value, is_dryrun)
+        if not is_dryrun:
+            doldap_remove(m)
+
 def update_changed_members(old, changed, c, is_dryrun):
-  moved = {}
-  for id in changed.keys():
-    if not is_dryrun:
-      doldap_modify(changed[id][LIDNUMMER], format_name(changed[id][NAAM], changed[id][VOORNAAM], changed[id][ACHTERNAAM]), changed[id][EMAIL], find_department(parse_postcode(changed[id][POSTCODE]))) 
-    if (changed[id][NAAM] != old[id][NAAM] or changed[id][EMAIL] != old[id][EMAIL]):
-      name = format_name(changed[id][NAAM], changed[id][VOORNAAM], changed[id][ACHTERNAAM])
-      value = name, changed[id][EMAIL], old[id][EMAIL]
-      sql = "UPDATE IGNORE 2gWw_jnews_subscribers SET name=%s, email=%s WHERE email=%s"
-      dosql(c, sql, value, is_dryrun) # Check if member has moved to a new department
-    if (changed[id][POSTCODE] != old[id][POSTCODE]): # Only resubscribe if department actually changes
-      newdept = find_department(parse_postcode(changed[id][POSTCODE]))
-      olddept = find_department(parse_postcode(old[id][POSTCODE]))
-      if (newdept != olddept):
-        moved[id] = changed[id]
-  return moved
+    moved = {}
+    for id in changed.keys():
+        if not is_dryrun:
+            doldap_modify(changed[id][LIDNUMMER], format_name(changed[id][NAAM], changed[id][VOORNAAM], changed[id][ACHTERNAAM]), changed[id][EMAIL], find_department(parse_postcode(changed[id][POSTCODE])))
+        if (changed[id][NAAM] != old[id][NAAM] or changed[id][EMAIL] != old[id][EMAIL]):
+            name = format_name(changed[id][NAAM], changed[id][VOORNAAM], changed[id][ACHTERNAAM])
+            value = name, changed[id][EMAIL], old[id][EMAIL]
+            sql = "UPDATE IGNORE 2gWw_jnews_subscribers SET name=%s, email=%s WHERE email=%s"
+            dosql(c, sql, value, is_dryrun) # Check if member has moved to a new department
+        if (changed[id][POSTCODE] != old[id][POSTCODE]): # Only resubscribe if department actually changes
+            newdept = find_department(parse_postcode(changed[id][POSTCODE]))
+            olddept = find_department(parse_postcode(old[id][POSTCODE]))
+            if (newdept != olddept):
+                moved[id] = changed[id]
+    return moved
 
 def add_members_to_database(plus_split, c, is_dryrun):
-  for d in plus_split.keys():
-    for id in plus_split[d].keys():
-      name = format_name(plus_split[d][id][NAAM], plus_split[d][id][VOORNAAM], plus_split[d][id][ACHTERNAAM])
-      value = name, plus_split[d][id][EMAIL], 1, NOW
-      sql = "INSERT INTO 2gWw_jnews_subscribers (name, email, confirmed, subscribe_date) VALUES (%s, %s, %s, %s) ON DUPLICATE KEY UPDATE id=id"
-      dosql(c, sql, value, is_dryrun)
-      if not is_dryrun:
-        doldap_add(plus_split[d][id][LIDNUMMER], name, plus_split[d][id][EMAIL], d)
-      
+    for d in plus_split.keys():
+        for id in plus_split[d].keys():
+            name = format_name(plus_split[d][id][NAAM], plus_split[d][id][VOORNAAM], plus_split[d][id][ACHTERNAAM])
+            value = name, plus_split[d][id][EMAIL], 1, NOW
+            sql = "INSERT INTO 2gWw_jnews_subscribers (name, email, confirmed, subscribe_date) VALUES (%s, %s, %s, %s) ON DUPLICATE KEY UPDATE id=id"
+            dosql(c, sql, value, is_dryrun)
+            if not is_dryrun:
+                doldap_add(plus_split[d][id][LIDNUMMER], name, plus_split[d][id][EMAIL], d)
+
 def subscribe_members_to_maillist(plus_split, db, c, is_dryrun):
-  for d in plus_split.keys():
-    values = []
-    for id in plus_split[d].keys():
-      email = db.escape_string(plus_split[d][id][EMAIL])
-      values.append((email, "Digizine", "Nieuwsbrief " + d))
-    
-    for v in values: # Digizine
-      sql, value = prepare_subscribe_query(v[0], v[1])
-      dosql(c, sql, value, is_dryrun) # Afdelingsnieuwsbrief
-      sql, value = prepare_subscribe_query(v[0], v[2])
-      dosql(c, sql, value, is_dryrun)  
+    for d in plus_split.keys():
+        values = []
+        for id in plus_split[d].keys():
+            email = db.escape_string(plus_split[d][id][EMAIL])
+            values.append((email, "Digizine", "Nieuwsbrief " + d))
+
+        for v in values: # Digizine
+            sql, value = prepare_subscribe_query(v[0], v[1])
+            dosql(c, sql, value, is_dryrun) # Afdelingsnieuwsbrief
+            sql, value = prepare_subscribe_query(v[0], v[2])
+            dosql(c, sql, value, is_dryrun)
 
 def move_members_to_new_department(old, db, c, moved_split, is_dryrun):
-  for d in moved_split.keys():
-    values = []
-    for id in moved_split[d].keys():
-      email = db.escape_string(moved_split[d][id][EMAIL])
-      values.append((email, "Nieuwsbrief " + d))
-    
-    for v in values: # Unsubscribe old
-      olddept = find_department(parse_postcode(old[id][POSTCODE]))
-      oldlist = "Nieuwsbrief " + olddept
-      value = NOW, oldlist, v[0]
-      sql = "UPDATE IGNORE 2gWw_jnews_listssubscribers SET unsubdate=%s, unsubscribe=1 WHERE list_id IN (SELECT id FROM 2gWw_jnews_lists WHERE list_name=%s) AND subscriber_id = (SELECT id FROM 2gWw_jnews_subscribers WHERE email=%s)"
-      dosql(c, sql, value, is_dryrun) # Subscribe new
-      sql, value = prepare_subscribe_query(v[0], v[1])
-      dosql(c, sql, value, is_dryrun)
-    
+    for d in moved_split.keys():
+        values = []
+        for id in moved_split[d].keys():
+            email = db.escape_string(moved_split[d][id][EMAIL])
+            values.append((email, "Nieuwsbrief " + d))
+
+        for v in values: # Unsubscribe old
+            olddept = find_department(parse_postcode(old[id][POSTCODE]))
+            oldlist = "Nieuwsbrief " + olddept
+            value = NOW, oldlist, v[0]
+            sql = "UPDATE IGNORE 2gWw_jnews_listssubscribers SET unsubdate=%s, unsubscribe=1 WHERE list_id IN (SELECT id FROM 2gWw_jnews_lists WHERE list_name=%s) AND subscriber_id = (SELECT id FROM 2gWw_jnews_subscribers WHERE email=%s)"
+            dosql(c, sql, value, is_dryrun) # Subscribe new
+            sql, value = prepare_subscribe_query(v[0], v[1])
+            dosql(c, sql, value, is_dryrun)
+
 def parse_options(parser, options, args):
-  # Detect which mode we run as and check sanity
-  newfile = ""
-  oldfile = ""
-  
-  if options.only_jnews and options.only_excel:
-    parser.error("options -j and -x are mutually exclusive")
-  elif options.only_excel:
-    if len(args) != 1:
-      parser.error("need 1 argument: new.xls")
-    newfile = args[0]
-  else:
-    if len(args) != 2:
-      parser.error("need 2 arguments: old.xls new.xls")
-    logger.info("Verifying sanity of input files")
-    csumfile = os.path.join(SCRIPTDIR, "checksum.txt")
-    oldfile = args[0]
-    newfile = args[1]
-    with open(oldfile, "r") as f:
-      oldsha = hashlib.sha512(f.read()).hexdigest()
-    with open(newfile, "r") as f:
-      newsha = hashlib.sha512(f.read()).hexdigest()
-    try:
-      f = open(csumfile, "r")
-    except IOError as e:
-      # If no checksum.txt exists, pretend it was correct
-      if e.errno == errno.ENOENT:
-        logger.warning("Will create new checksum.txt")
-        storedsha = oldsha
-      else:
-        raise
+    # Detect which mode we run as and check sanity
+    newfile = ""
+    oldfile = ""
+
+    if options.only_jnews and options.only_excel:
+        parser.error("options -j and -x are mutually exclusive")
+    elif options.only_excel:
+        if len(args) != 1:
+            parser.error("need 1 argument: new.xls")
+        newfile = args[0]
     else:
-      storedsha = f.readline().split()[0] # Read sha512sum-compatible checksum-file
-    
-    if oldsha == storedsha:
-      with open(csumfile, "w") as f: # Write sha512sum-compatible checksum-file
-        f.write("%s  %s\n" % (newsha, newfile))
-      logger.info("Input files are sane")
-    else:
-      logger.critical("Wrong old.xls")
-      sys.exit(1)
-      
-  return newfile, oldfile
+        if len(args) != 2:
+            parser.error("need 2 arguments: old.xls new.xls")
+        logger.info("Verifying sanity of input files")
+        csumfile = os.path.join(SCRIPTDIR, "checksum.txt")
+        oldfile = args[0]
+        newfile = args[1]
+        with open(oldfile, "r") as f:
+            oldsha = hashlib.sha512(f.read()).hexdigest()
+        with open(newfile, "r") as f:
+            newsha = hashlib.sha512(f.read()).hexdigest()
+        try:
+            f = open(csumfile, "r")
+        except IOError as e:
+            # If no checksum.txt exists, pretend it was correct
+            if e.errno == errno.ENOENT:
+                logger.warning("Will create new checksum.txt")
+                storedsha = oldsha
+            else:
+                raise
+        else:
+            storedsha = f.readline().split()[0] # Read sha512sum-compatible checksum-file
+
+        if oldsha == storedsha:
+            with open(csumfile, "w") as f: # Write sha512sum-compatible checksum-file
+                f.write("%s  %s\n" % (newsha, newfile))
+            logger.info("Input files are sane")
+        else:
+            logger.critical("Wrong old.xls")
+            sys.exit(1)
+
+    return newfile, oldfile
 
 def write_department_excels(new):
-  split = split_by_department(new)
-  outdir = os.path.join("uitvoer", time.strftime("%F %T"))
-  trymkdir(outdir, 0700)
-  for dept in split.keys():
-    fileDepartment = os.path.join(outdir, dept + ".xls")
-    write_xls(fileDepartment, split[dept])
-  
+    split = split_by_department(new)
+    outdir = os.path.join("uitvoer", time.strftime("%F %T"))
+    trymkdir(outdir, 0700)
+    for dept in split.keys():
+        fileDepartment = os.path.join(outdir, dept + ".xls")
+        write_xls(fileDepartment, split[dept])
+
 
 def read_xls(f):
-    # Read xls file from disk
+        # Read xls file from disk
     book = xlrd.open_workbook(f)
     sheet = book.sheet_by_index(0)
     lastrow = sheet.nrows-1
@@ -423,13 +423,13 @@ def dosql(c, sql, value, dryrun=False):
         logger.debug(msg)
 
 def log_script_arguments():
-  commandArguments = "Start script with command: "
-  for arg in sys.argv:
-    commandArguments += arg + " "
-  logger.info(commandArguments)
+    commandArguments = "Start script with command: "
+    for arg in sys.argv:
+        commandArguments += arg + " "
+    logger.info(commandArguments)
 
 def trymkdir(dir, perm=0700):
-    # Make directory if needed
+        # Make directory if needed
     try:
         os.makedirs(dir, perm)
     except IOError as e:
@@ -463,11 +463,11 @@ def format_name(fullname, firstname, lastname):
 
 def doldap_remove(id):
     l = ldap.initialize(ldapcfg["name"])
-    try:    
+    try:
         l.simple_bind_s(ldapcfg["dn"], ldapcfg["password"])
     except ldap.LDAPError, e:
         logger.critical(str(e))
-    
+
     dn_to_delete = "cn="+str(int(id))+",ou=users,dc=jd,dc=nl"
     try:
         l.delete_s(dn_to_delete)
