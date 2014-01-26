@@ -42,11 +42,10 @@ Usage: %prog [options] ledenlijst.xls"""
     logger.info("Reading complete")
     logger.info("Calculating reallocated members")
     
-    print '================================='
-    print 'leden die verplaatst gaan worden:'
+    logger.info('leden die verplaatst gaan worden:')
     reallocated = get_reallocated_members(members)
     for realloc in reallocated:
-        print realloc[9] + ' van ' + find_afdeling( afdelingen_oud, ledenlijst.parse_postcode(realloc[ledenlijst.POSTCODE]) ) + ' naar ' + find_afdeling( afdelingen_new, ledenlijst.parse_postcode(realloc[ledenlijst.POSTCODE]) )
+        logger.info( realloc[9] + ' van ' + find_afdeling( afdelingen_oud, ledenlijst.parse_postcode(realloc[ledenlijst.POSTCODE]) ) + ' naar ' + find_afdeling( afdelingen_new, ledenlijst.parse_postcode(realloc[ledenlijst.POSTCODE]) ) )
     
     logger.info("Connecting to database")
     dbcfg = ledenlijst.dbcfg
