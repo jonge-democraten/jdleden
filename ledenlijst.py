@@ -140,30 +140,34 @@ def main():
         db = MySQLdb.connect(user=dbcfg["user"], passwd=dbcfg["password"], db=dbcfg["name"])
 
         # Make everything transactional, will rollback in case of exception
-        with db:
-            c = db.cursor()
-            # Remove old members
-            logger.info("Removing members...")
-            remove_members(former_members, c, options.dryrun)
-            logger.info("Removing complete")
-            # Update changed members
-            logger.info("Updating changed members...")
-            moved = update_changed_members(old, changed_members, c, options.dryrun)
-            logger.info("Changes complete")
-            # Add new members
-            logger.info("Adding new members...")
-            add_members_to_database(current_members_per_dep, c, options.dryrun)
-            logger.info("Adding complete")
-            # Add the new members to their department
-            logger.info("Subscribing new members to lists...")
-            subscribe_members_to_maillist(current_members_per_dep, db, c, options.dryrun)
-            logger.info("Subscribing complete") 
-            # Unsubscribe moved members from old department and subscribe to new department
-            logger.info("Moving members to new departments...")
-            moved_split = split_by_department(moved)
-            move_members_to_new_department(old, db, c, moved_split, options.dryrun)
-            write_department_excels(moved, "verhuisd")
-            logger.info("Moving complete")
+        try:
+            with db:
+                c = db.cursor()
+                # Remove old members
+                logger.info("Removing members...")
+                remove_members(former_members, c, options.dryrun)
+                logger.info("Removing complete")
+                # Update changed members
+                logger.info("Updating changed members...")
+                moved = update_changed_members(old, changed_members, c, options.dryrun)
+                logger.info("Changes complete")
+                # Add new members
+                logger.info("Adding new members...")
+                add_members_to_database(current_members_per_dep, c, options.dryrun)
+                logger.info("Adding complete")
+                # Add the new members to their department
+                logger.info("Subscribing new members to lists...")
+                subscribe_members_to_maillist(current_members_per_dep, db, c, options.dryrun)
+                logger.info("Subscribing complete") 
+                # Unsubscribe moved members from old department and subscribe to new department
+                logger.info("Moving members to new departments...")
+                moved_split = split_by_department(moved)
+                move_members_to_new_department(old, db, c, moved_split, options.dryrun)
+                write_department_excels(moved, "verhuisd")
+                logger.info("Moving complete")
+                logger.info("SUCCESS!! End of database transactions and this script.")
+        except:
+            logger.error("FAILURE: Problems while trying to executing database query. Transaction is not commited! Meaning nothing has changed in the database. Please contact the ICT-team!")
 
 
 def remove_members(min, c, is_dryrun):
@@ -416,8 +420,10 @@ def dosql(c, sql, value, dryrun=False):
     if not dryrun:
         try:
             c.execute(sql, value)
-        except:
+        except MySQLdb.Error, e:
+            logger.error("MySQL Error: " + str(e))
             logger.error("Error executing query: " + (sql % value).encode("utf-8"))
+            raise
     for msg in c.messages:
         logger.debug(msg)
 
