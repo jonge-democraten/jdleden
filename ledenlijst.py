@@ -142,7 +142,6 @@ def main():
         # Make everything transactional, will rollback in case of exception
         with db:
             c = db.cursor()
-    
             # Remove old members
             logger.info("Removing members...")
             remove_members(former_members, c, options.dryrun)
@@ -418,7 +417,7 @@ def dosql(c, sql, value, dryrun=False):
         try:
             c.execute(sql, value)
         except:
-            logger.error("Error executing previous query")
+            logger.error("Error executing query: " + (sql % value).encode("utf-8"))
     for msg in c.messages:
         logger.debug(msg)
 
@@ -429,7 +428,7 @@ def log_script_arguments():
     logger.info(commandArguments)
 
 def trymkdir(dir, perm=0700):
-        # Make directory if needed
+    # Make directory if needed
     try:
         os.makedirs(dir, perm)
     except IOError as e:
