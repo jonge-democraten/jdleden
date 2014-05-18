@@ -104,7 +104,7 @@ def main():
     in regular and jNews-only-mode, arguments is 2 files: old.xls new.xls
     in Excel-only-mode, arguments is 1 file: new.xls"""
     parser = OptionParser(usage)
-    parser.add_option("-n", "--dryrun", action="store_true", dest="dryrun", help="don't execute any SQL")
+    parser.add_option("-n", "--dryrun", action="store_true", dest="dryrun", help="don't execute any SQL or LDAP")
     parser.add_option("-j", "--jnews", action="store_true", dest="only_jnews", help="only update jNews-subscriptions")
     parser.add_option("-x", "--excel", action="store_true", dest="only_excel", help="only generate Excel-files per department")
     # Read options and check sanity
@@ -145,27 +145,33 @@ def main():
             with db:
                 c = db.cursor()
                 # Remove old members
-                logger.info("Removing members...")
+                logger.info("Removing " + str(len(former_members)) + " members..." )
                 remove_members(former_members, c, options.dryrun)
-                logger.info("Removing complete")
+                logger.info("Removing complete.")
                 # Update changed members
-                logger.info("Updating changed members...")
+                logger.info("Updating " + str(len(changed_members)) + " changed members...")
                 moved = update_changed_members(old, changed_members, c, options.dryrun)
-                logger.info("Changes complete")
+                logger.info("Changes complete.")
                 # Add new members
-                logger.info("Adding new members...")
+                logger.info("Adding " + str(len(new_members)) + " new members...")
                 add_members_to_database(current_members_per_dep, c, options.dryrun)
-                logger.info("Adding complete")
+                logger.info("Adding complete.")
                 # Add the new members to their department
-                logger.info("Subscribing new members to lists...")
+                logger.info("Subscribing " + str(len(new_members)) + " new members to lists...")
                 subscribe_members_to_maillist(current_members_per_dep, db, c, options.dryrun)
-                logger.info("Subscribing complete") 
+                logger.info("Subscribing complete.") 
                 # Unsubscribe moved members from old department and subscribe to new department
-                logger.info("Moving members to new departments...")
+                logger.info("Moving members " + str(len(moved)) + " to new departments...")
                 moved_split = split_by_department(moved)
                 move_members_to_new_department(old, db, c, moved_split, options.dryrun)
                 write_department_excels(moved, "verhuisd")
-                logger.info("Moving complete")
+                logger.info("Moving complete.")
+                logger.info("=== Summary === ")
+                logger.info("Removed: " + str(len(former_members)) )
+                logger.info("Added: " + str(len(new_members)) )
+                logger.info("Updated: " + str(len(changed_members)) )
+                logger.info("Changed department: " + str(len(moved)) )
+                logger.info("==========")
                 create_new_checksum(newfile);
                 logger.info("SUCCESS!! End of database transactions and this script.")
         except:
@@ -292,7 +298,7 @@ def write_department_excels(new, directory_name):
         write_xls(fileDepartment, split[dept])
 
 def read_xls(f):
-        # Read xls file from disk
+    # Read xls file from disk
     book = xlrd.open_workbook(f)
     sheet = book.sheet_by_index(0)
     lastrow = sheet.nrows-1
@@ -306,10 +312,10 @@ def read_xls(f):
         logger.critical("Last row does not seem to be a Total, possible format-change. Please contact the ICT-team if you are not completely sure what to do.")
         sys.exit(1)
     # XXX adjust this number if JD grows or shrinks
-    if sheet.cell_value(lastrow, 1) not in xrange(4000,6000):
+    if sheet.cell_value(lastrow, 1) not in xrange(0000,6000):
         logger.critical("Number of members in last row very different from hardcoded safeguard. Please contact the ICT-team.")
         sys.exit(1)
-    if sheet.nrows not in xrange(4000,6000):
+    if sheet.nrows not in xrange(0000,6000):
         logger.critical("Total number of rows very different from hardcoded safeguard. Please contact the ICT-team.")
         sys.exit(1)
     # Store all members in dict by member-number
@@ -474,12 +480,14 @@ def doldap_remove(id):
         l.simple_bind_s(ldapcfg["dn"], ldapcfg["password"])
     except ldap.LDAPError, e:
         logger.critical(str(e))
+        raise
 
     dn_to_delete = "cn="+str(int(id))+",ou=users,dc=jd,dc=nl"
     try:
         l.delete_s(dn_to_delete)
     except ldap.LDAPError, e:
         logger.warning(str(e) + " - Could not remove - "+str(int(id)))
+        raise
     l.unbind_s();
 
 def doldap_add(lidnummer, naam, mail, afdeling):
@@ -488,6 +496,7 @@ def doldap_add(lidnummer, naam, mail, afdeling):
         l.simple_bind_s(ldapcfg["dn"], ldapcfg["password"])
     except ldap.LDAPError, e:
         logger.critical(str(e))
+        raise
 
     dn_to_add = "cn="+str(int(lidnummer))+",ou=users,dc=jd,dc=nl"
     attrs = {}
@@ -501,6 +510,7 @@ def doldap_add(lidnummer, naam, mail, afdeling):
         l.add_s(dn_to_add, ldif)
     except ldap.LDAPError, e:
         logger.warning(str(e) + " - Could not add - "+str(int(lidnummer)))
+        raise
     l.unbind_s()
 
 def doldap_modify(lidnummer, naam, mail, afdeling):
@@ -509,6 +519,7 @@ def doldap_modify(lidnummer, naam, mail, afdeling):
         l.simple_bind_s(ldapcfg["dn"], ldapcfg["password"])
     except ldap.LDAPError, e:
         logger.critical(str(e))
+        raise
 
     dn_to_mod = "cn="+str(int(lidnummer))+",ou=users,dc=jd,dc=nl"
 
@@ -518,6 +529,7 @@ def doldap_modify(lidnummer, naam, mail, afdeling):
         l.modify_s(dn_to_mod, attrs)
     except ldap.LDAPError, e:
         logger.warning(str(e) + " - Could not modify - "+str(int(lidnummer)))
+        raise
     l.unbind_s()
 
 
