@@ -23,6 +23,7 @@ NOWHUMAN = time.strftime("%F %T")  # Human-readable time
 # via symlink.  The purpose of this is to write output-files relative to
 # the script-directory, not the current directory.
 SCRIPTDIR = os.path.dirname(os.path.realpath(__file__))
+CHECKSUMFILE = os.path.join(SCRIPTDIR, "checksum.txt")
 
 # Give all important columns a name
 LIDNUMMER = 0
@@ -165,10 +166,10 @@ def main():
                 move_members_to_new_department(old, db, c, moved_split, options.dryrun)
                 write_department_excels(moved, "verhuisd")
                 logger.info("Moving complete")
+                create_new_checksum(newfile);
                 logger.info("SUCCESS!! End of database transactions and this script.")
         except:
             logger.error("FAILURE: Problems while trying to executing database query. Transaction is not commited! Meaning nothing has changed in the database. Please contact the ICT-team!")
-
 
 def remove_members(min, c, is_dryrun):
     for m in min:
@@ -251,19 +252,16 @@ def parse_options(parser, options, args):
         if len(args) != 2:
             parser.error("need 2 arguments: old.xls new.xls")
         logger.info("Verifying sanity of input files")
-        csumfile = os.path.join(SCRIPTDIR, "checksum.txt")
+        
         oldfile = args[0]
         newfile = args[1]
         with open(oldfile, "r") as f:
             oldsha = hashlib.sha512(f.read()).hexdigest()
-        with open(newfile, "r") as f:
-            newsha = hashlib.sha512(f.read()).hexdigest()
         try:
-            f = open(csumfile, "r")
+            f = open(CHECKSUMFILE, "r") 
         except IOError as e:
             # If no checksum.txt exists, pretend it was correct
             if e.errno == errno.ENOENT:
-                logger.warning("Will create new checksum.txt")
                 storedsha = oldsha
             else:
                 raise
@@ -271,14 +269,19 @@ def parse_options(parser, options, args):
             storedsha = f.readline().split()[0] # Read sha512sum-compatible checksum-file
 
         if oldsha == storedsha:
-            with open(csumfile, "w") as f: # Write sha512sum-compatible checksum-file
-                f.write("%s  %s\n" % (newsha, newfile))
-            logger.info("Input files are sane")
+            logger.info("Input files are sane (checksums match)")
         else:
-            logger.critical("Wrong old.xls (according to chechsum). Please contact the ICT-team if you are not completely sure what to do.")
+            logger.critical("Wrong old.xls (according to checksum). Please contact the ICT-team if you are not completely sure what to do.")
             sys.exit(1)
 
     return newfile, oldfile
+
+def create_new_checksum(newfile):
+    logger.info("Create new checksum.txt")
+    with open(newfile, "r") as f:
+        newsha = hashlib.sha512(f.read()).hexdigest()
+    with open(CHECKSUMFILE, "w") as checksumfile: # Write sha512sum-compatible checksum-file
+        checksumfile.write("%s  %s\n" % (newsha, newfile))
 
 def write_department_excels(new, directory_name):
     split = split_by_department(new)
@@ -287,7 +290,6 @@ def write_department_excels(new, directory_name):
     for dept in split.keys():
         fileDepartment = os.path.join(outdir, dept + ".xls")
         write_xls(fileDepartment, split[dept])
-
 
 def read_xls(f):
         # Read xls file from disk
