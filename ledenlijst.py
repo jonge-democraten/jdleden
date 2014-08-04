@@ -112,6 +112,9 @@ def main():
     log_script_arguments()
 
     newfile, oldfile = parse_options(parser, options, args)
+    
+    if options.dryrun:
+      logger.warning("Dry-run. No database and LDAP changes.")
 
     # This code needs to exist above only_jnews- and only_excel-blocks
     # because it applies to both.
@@ -284,7 +287,7 @@ def parse_options(parser, options, args):
     return newfile, oldfile
 
 def create_new_checksum(newfile):
-    logger.info("Create new checksum.txt")
+    logger.info("Creating new checksum.txt...")
     with open(newfile, "r") as f:
         newsha = hashlib.sha512(f.read()).hexdigest()
     with open(CHECKSUMFILE, "w") as checksumfile: # Write sha512sum-compatible checksum-file
@@ -340,11 +343,6 @@ def read_xls(f):
             leden[id] += ['', '']  # Columns need to exist anyway
         else:
             leden[id] += [firstname, lastname]  # Append to existing list
-        # Convert birthdate to date
-        try:
-            leden[id][GEBDATUM] = excel_to_date(leden[id][GEBDATUM])
-        except ValueError, xlrd.XLDateError:
-            logger.warning("geen geboortedatum voor lid met id: %d, naam: %s" % (id, leden[id][NAAM]) )
         # Convert voting right to boolean
         if leden[id][STEMRECHT] == "Ja":
             leden[id][STEMRECHT] = True
