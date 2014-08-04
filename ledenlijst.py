@@ -27,8 +27,8 @@ CHECKSUMFILE = os.path.join(SCRIPTDIR, "checksum.txt")
 
 # Give all important columns a name
 LIDNUMMER = 0
-LIDSINDS = 2
-LIDTOT = 3
+#LIDSINDS = 2
+#LIDTOT = 3
 NAAM  = 4
 GEBDATUM = 6
 POSTCODE = 8
@@ -175,7 +175,7 @@ def main():
                 create_new_checksum(newfile);
                 logger.info("SUCCESS!! End of database transactions and this script.")
         except:
-            logger.error("FAILURE: Problems while trying to executing database query. Transaction is not commited! Meaning nothing has changed in the database. Please contact the ICT-team!")
+            logger.error("FAILURE: Problems while trying to executing database query. Transaction is not commited! Nothing has changed in the database. Please contact the ICT-team!")
 
 def remove_members(min, c, is_dryrun):
     for m in min:
@@ -269,6 +269,7 @@ def parse_options(parser, options, args):
             # If no checksum.txt exists, pretend it was correct
             if e.errno == errno.ENOENT:
                 storedsha = oldsha
+                logger.warning("No checksum.txt found.")
             else:
                 raise
         else:
@@ -329,40 +330,30 @@ def read_xls(f):
         leden[int(row[LIDNUMMER].value)] = [c.value for c in row]
     # Sanitise data
     for id in leden.keys():
+        # Convert member id to int
+        leden[id][LIDNUMMER] = int(leden[id][LIDNUMMER])
         # Split firstname and lastname
         try:
             lastname, firstname = leden[id][NAAM].split(', ', 1)
         except ValueError:
-            logger.warning("[%d] geen voor- of achternaam" % id)
+            # logger.warning("[%d] geen voor- of achternaam" % id) # these entries do not exist in todays input so we disable to warning that floods the logs
             leden[id] += ['', '']  # Columns need to exist anyway
         else:
             leden[id] += [firstname, lastname]  # Append to existing list
-        # Convert member id to int
-        leden[id][LIDNUMMER] = int(leden[id][LIDNUMMER])
-        # Convert "member since" to date
-        try:
-            leden[id][LIDSINDS] = excel_to_date(leden[id][LIDSINDS])
-        except ValueError, xlrd.XLDateError:
-            logger.warning("[%d] geen lidsinds" % id)
-        # Convert "member until" to date
-        try:
-            leden[id][LIDTOT] = excel_to_date(leden[id][LIDTOT])
-        except ValueError, xlrd.XLDateError:
-            # lidtot is not important
-            logger.debug("[%d] geen lidtot" % id)
         # Convert birthdate to date
         try:
             leden[id][GEBDATUM] = excel_to_date(leden[id][GEBDATUM])
         except ValueError, xlrd.XLDateError:
-            logger.warning("[%d] geen geboortedatum" % id)
+            logger.warning("geen geboortedatum voor lid met id: %d, naam: %s" % (id, leden[id][NAAM]) )
         # Convert voting right to boolean
         if leden[id][STEMRECHT] == "Ja":
             leden[id][STEMRECHT] = True
         elif leden[id][STEMRECHT] == "Nee":
             leden[id][STEMRECHT] = False
         else:
-            logger.warning("[%d] stemrecht ongedefinieerd" % id)
+            logger.warning("stemrecht ongedefinieerd voor lid met id: %d, naam: %s" % (id, leden[id][NAAM]) )
     return leden
+
 
 def write_xls(f, members):
     book = xlwt.Workbook()
