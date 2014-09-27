@@ -488,7 +488,7 @@ def doldap_add(lidnummer, naam, mail, afdeling):
         l.simple_bind_s(ldapcfg["dn"], ldapcfg["password"])
     except ldap.LDAPError, e:
         logger.critical(str(e))
-        raise
+        #raise # this can happen because the database is transactional but the LDAP not yet (script can come here twice)
 
     dn_to_add = "cn="+str(int(lidnummer))+",ou=users,dc=jd,dc=nl"
     attrs = {}
@@ -502,7 +502,7 @@ def doldap_add(lidnummer, naam, mail, afdeling):
         l.add_s(dn_to_add, ldif)
     except ldap.LDAPError, e:
         logger.warning(str(e) + " - Could not add - "+str(int(lidnummer)))
-        raise
+        #raise # this can happen because the database is transactional but the LDAP not yet (script can come here twice)
     l.unbind_s()
 
 def doldap_modify(lidnummer, naam, mail, afdeling):
