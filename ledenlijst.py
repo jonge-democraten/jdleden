@@ -175,7 +175,8 @@ def main():
                 logger.info("Updated: " + str(len(changed_members)) )
                 logger.info("Changed department: " + str(len(moved)) )
                 logger.info("==========")
-                create_new_checksum(newfile);
+                if not options.dryrun:
+                    create_new_checksum(newfile);
                 logger.info("SUCCESS!! End of database transactions and this script.")
                 if options.dryrun:
                     logger.warning("Dry-run. No actual database and LDAP changes!")
