@@ -177,6 +177,8 @@ def main():
                 logger.info("==========")
                 create_new_checksum(newfile);
                 logger.info("SUCCESS!! End of database transactions and this script.")
+                if options.dryrun:
+                    logger.warning("Dry-run. No actual database and LDAP changes!")
         except:
             logger.error("FAILURE: Problems while trying to executing database query. Transaction is not commited! Nothing has changed in the database. Please contact the ICT-team!")
 
