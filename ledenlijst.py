@@ -474,7 +474,7 @@ def doldap_remove(id):
         l.simple_bind_s(ldapcfg["dn"], ldapcfg["password"])
     except ldap.LDAPError, e:
         logger.critical(str(e))
-        raise
+        #raise # this can happen because the database is transactional but the LDAP not yet (script can come here twice)
 
     dn_to_delete = "cn="+str(int(id))+",ou=users,dc=jd,dc=nl"
     try:
