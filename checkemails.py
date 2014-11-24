@@ -40,14 +40,16 @@ def main():
     db = MySQLdb.connect(user=dbcfg["user"], passwd=dbcfg["password"], db=dbcfg["name"])
     cursor = db.cursor()
     
-    for memberid in members:
-        print members[memberid][EMAIL]
-        value = members[memberid][EMAIL]
+    for key in members:
+        emailaddress = members[key][EMAIL]
         sql = "SELECT id FROM 2gWw_jnews_subscribers WHERE email=%s"
-        cursor.execute(sql, value)
+        cursor.execute(sql, emailaddress)
         data = cursor.fetchall()
+        idFound = 0
         for row in data :
-            print row[0]
+            idFound = int(row[0])
+        if idFound == 0:
+            print 'no member found with: ' + emailaddress
   
 if __name__ == "__main__":
     main()
