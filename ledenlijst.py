@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+# -*- coding: utf-8 -*-
 
 import sys
 import os
@@ -141,7 +142,7 @@ def main():
         # Use email-address instead of member-id to identify subscriptions.
         # Member-id cannot be used because of risk of collisions from two
         # independent subscription-vectors (webform and D66 administration).
-        db = MySQLdb.connect(user=dbcfg["user"], passwd=dbcfg["password"], db=dbcfg["name"])
+        db = MySQLdb.connect(user=dbcfg["user"], passwd=dbcfg["password"], db=dbcfg["name"], charset='utf8', use_unicode=True)
 
         # Make everything transactional, will rollback in case of exception
         try:
@@ -181,7 +182,8 @@ def main():
                 if options.dryrun:
                     logger.warning("Dry-run. No actual database and LDAP changes!")
         except:
-            logger.error("FAILURE: Problems while trying to executing database query. Transaction is not commited! Nothing has changed in the database. Please contact the ICT-team!")
+            logger.error("FAILURE: Problems while trying to execute database query. Transaction is not committed! Nothing has changed in the database. Please contact the ICT-team!")
+            logger.error("Exception:", exc_info=sys.exc_info())
 
 def remove_members(min, c, is_dryrun):
     for m in min:
