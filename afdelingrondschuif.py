@@ -51,25 +51,28 @@ Usage: %prog [options] ledenlijst.xls"""
     dbcfg = ledenlijst.dbcfg
     db = MySQLdb.connect(user=dbcfg["user"], passwd=dbcfg["password"], db=dbcfg["name"])
     # Make everything transactional, will rollback in case of exception
-    with db:
-        logger.info("Doing mass (un)subscribes")
-        c = db.cursor()
-        # Iterate over reallocated.values() and perform the moving
-        for member in reallocated:
-            email = db.escape_string(member[ledenlijst.EMAIL])
-            olddept = find_afdeling( afdelingenoud.AFDELINGEN, ledenlijst.parse_postcode(member[ledenlijst.POSTCODE]) )
-            oldlist = "Nieuwsbrief " + olddept
-            newdept = find_afdeling( afdelingen.AFDELINGEN, ledenlijst.parse_postcode(member[ledenlijst.POSTCODE]) )
-            newlist = "Nieuwsbrief " + newdept
-            # Subscribe new
-            sql, value = ledenlijst.prepare_subscribe_query(email, newlist)
-            ledenlijst.dosql(c, sql, value, options.dryrun)
-            # Unsubscribe old
-            value = (ledenlijst.NOW, oldlist, email)
-            sql = "UPDATE IGNORE 2gWw_jnews_listssubscribers SET unsubdate=%s, unsubscribe=1 WHERE list_id IN (SELECT id FROM 2gWw_jnews_lists WHERE list_name=%s) AND subscriber_id = (SELECT id FROM 2gWw_jnews_subscribers WHERE email=%s)"
-            ledenlijst.dosql(c, sql, value, options.dryrun)  
-        
-        
+    try:
+        with db:
+            logger.info("Doing mass (un)subscribes")
+            c = db.cursor()
+            # Iterate over reallocated.values() and perform the moving
+            for member in reallocated:
+                email = db.escape_string(member[ledenlijst.EMAIL])
+                olddept = find_afdeling( afdelingenoud.AFDELINGEN, ledenlijst.parse_postcode(member[ledenlijst.POSTCODE]) )
+                oldlist = "Nieuwsbrief " + olddept
+                newdept = find_afdeling( afdelingen.AFDELINGEN, ledenlijst.parse_postcode(member[ledenlijst.POSTCODE]) )
+                newlist = "Nieuwsbrief " + newdept
+                # Subscribe new
+                sql, value = ledenlijst.prepare_subscribe_query(email, newlist)
+                ledenlijst.dosql(c, sql, value, options.dryrun)
+                # Unsubscribe old
+                value = (ledenlijst.NOW, oldlist, email)
+                sql = "UPDATE IGNORE 2gWw_jnews_listssubscribers SET unsubdate=%s, unsubscribe=1 WHERE list_id IN (SELECT id FROM 2gWw_jnews_lists WHERE list_name=%s) AND subscriber_id = (SELECT id FROM 2gWw_jnews_subscribers WHERE email=%s)"
+                ledenlijst.dosql(c, sql, value, options.dryrun) 
+    except:
+        logger.error("FAILURE: Problem while trying to execute database query. Transaction is not committed! Nothing has changed in the database.")
+        logger.error("Exception:", exc_info=sys.exc_info())
+          
 def get_reallocated_members(members):
     reallocated_members = []
     for member in members.values():
