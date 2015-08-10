@@ -68,7 +68,9 @@ Usage: %prog [options] ledenlijst.xls"""
                 # Unsubscribe old
                 value = (ledenlijst.NOW, oldlist, email)
                 sql = "UPDATE IGNORE 2gWw_jnews_listssubscribers SET unsubdate=%s, unsubscribe=1 WHERE list_id IN (SELECT id FROM 2gWw_jnews_lists WHERE list_name=%s) AND subscriber_id = (SELECT id FROM 2gWw_jnews_subscribers WHERE email=%s)"
-                ledenlijst.dosql(c, sql, value, options.dryrun) 
+                ledenlijst.dosql(c, sql, value, options.dryrun)
+                if options.dryrun:
+                    logger.warning("Dry-run. No actual database changes!")
     except:
         logger.error("FAILURE: Problem while trying to execute database query. Transaction is not committed! Nothing has changed in the database.")
         logger.error("Exception:", exc_info=sys.exc_info())
