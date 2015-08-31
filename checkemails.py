@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-from ledenlijst import read_xls, EMAIL
+from ledenlijst import read_xls, EMAIL, NAAM
 
 import ConfigParser
 from optparse import OptionParser
@@ -42,6 +42,7 @@ def main():
     
     for key in members:
         emailaddress = members[key][EMAIL]
+        name = members[key][NAAM]
         sql = "SELECT id FROM 2gWw_jnews_subscribers WHERE email=%s"
         cursor.execute(sql, emailaddress)
         data = cursor.fetchall()
@@ -49,8 +50,9 @@ def main():
         for row in data :
             idFound = int(row[0])
         if idFound == 0:
-            print 'no member found with: ' + emailaddress
-  
+            print 'no member found with email: ' + emailaddress + ' (name=' + name + ')'
+
+            
 if __name__ == "__main__":
     main()
     
