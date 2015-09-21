@@ -453,7 +453,7 @@ def excel_to_date(xldate):
 
 def prepare_subscribe_query(email, listname):
     value = (email, listname, NOW)
-    sql = "INSERT INTO 2gWw_jnews_listssubscribers (subscriber_id, list_id, subdate) VALUES ((SELECT id FROM 2gWw_jnews_subscribers WHERE email=%s LIMIT 1), (SELECT id FROM 2gWw_jnews_lists WHERE list_name=%s), %s) ON DUPLICATE KEY UPDATE list_id = list_id"
+    sql = "INSERT IGNORE INTO 2gWw_jnews_listssubscribers (subscriber_id, list_id, subdate) VALUES ((SELECT id FROM 2gWw_jnews_subscribers WHERE email=%s LIMIT 1), (SELECT id FROM 2gWw_jnews_lists WHERE list_name=%s), %s) ON DUPLICATE KEY UPDATE list_id = list_id"
     return sql, value
 
 def format_name(fullname, firstname, lastname):
