@@ -1,0 +1,4 @@
+PyMySQL==0.6.7
+xlrd==0.9.4
+xlwt==1.0.0
+-e git+https://github.com/jonge-democraten/python-ldap@py3#egg=python-ldap
