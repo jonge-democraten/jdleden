@@ -185,6 +185,7 @@ def main():
             logger.error("FAILURE: Problems while trying to execute database query. Transaction is not committed! Nothing has changed in the database. Please contact the ICT-team!")
             logger.error("Exception:", exc_info=sys.exc_info())
 
+
 def remove_members(min, c, is_dryrun):
     for m in min:
         value = NOW, min[m][EMAIL]
@@ -192,6 +193,7 @@ def remove_members(min, c, is_dryrun):
         dosql(c, sql, value, is_dryrun)
         if not is_dryrun:
             doldap_remove(m)
+
 
 def update_changed_members(old, changed, c, is_dryrun):
     moved = {}
@@ -210,6 +212,7 @@ def update_changed_members(old, changed, c, is_dryrun):
                 moved[id] = changed[id]
     return moved
 
+
 def add_members_to_database(plus_split, c, is_dryrun):
     for d in plus_split.keys():
         for id in plus_split[d].keys():
@@ -219,6 +222,7 @@ def add_members_to_database(plus_split, c, is_dryrun):
             dosql(c, sql, value, is_dryrun)
             if not is_dryrun:
                 doldap_add(plus_split[d][id][LIDNUMMER], name, plus_split[d][id][EMAIL], d)
+
 
 def subscribe_members_to_maillist(plus_split, db, c, is_dryrun):
     for d in plus_split.keys():
@@ -232,6 +236,7 @@ def subscribe_members_to_maillist(plus_split, db, c, is_dryrun):
             dosql(c, sql, value, is_dryrun) # Afdelingsnieuwsbrief
             sql, value = prepare_subscribe_query(v[0], v[2])
             dosql(c, sql, value, is_dryrun)
+
 
 def move_members_to_new_department(old, db, c, moved_split, is_dryrun):
     for d in moved_split.keys():
@@ -250,6 +255,7 @@ def move_members_to_new_department(old, db, c, moved_split, is_dryrun):
             # Subscribe new
             sql, value = prepare_subscribe_query(v[0], v[1])
             dosql(c, sql, value, is_dryrun)
+
 
 def parse_options(parser, options, args):
     # Detect which mode we run as and check sanity
@@ -291,12 +297,14 @@ def parse_options(parser, options, args):
 
     return newfile, oldfile
 
+
 def create_new_checksum(newfile):
     logger.info("Creating new checksum.txt...")
     with open(newfile, "r") as f:
         newsha = hashlib.sha512(f.read()).hexdigest()
     with open(CHECKSUMFILE, "w") as checksumfile: # Write sha512sum-compatible checksum-file
         checksumfile.write("%s  %s\n" % (newsha, newfile))
+
 
 def write_department_excels(new, directory_name):
     split = split_by_department(new)
@@ -305,6 +313,7 @@ def write_department_excels(new, directory_name):
     for dept in split.keys():
         fileDepartment = os.path.join(outdir, dept + ".xls")
         write_xls(fileDepartment, split[dept])
+
 
 def read_xls(f):
     # Read xls file from disk
@@ -374,11 +383,13 @@ def write_xls(f, members):
         row += 1
     return book.save(f)
 
+
 def parse_postcode(s):
     try:
         return int(s.strip()[:4])
     except:
         return False  # Unknown format
+
 
 def get_new_and_former_members(oldlist, newlist):
     old = set(oldlist.keys())
@@ -387,12 +398,14 @@ def get_new_and_former_members(oldlist, newlist):
     former_members = dict([(id, oldlist[id]) for id in list(old-new)])
     return (new_members, former_members)
 
+
 def get_changed_members(oldlist, newlist):
     # Get the members who still exist
     intersect = list(set(oldlist.keys()) & set(newlist.keys()))
     # Find out who has changed
     changed = filter(lambda id: oldlist[id] != newlist[id], intersect)
     return dict([(id, newlist[id]) for id in changed])
+
 
 def find_department(pc):
     if not pc:
@@ -402,6 +415,7 @@ def find_department(pc):
             if (pc >= r[0]) and (pc <= r[1]):
                 return d
     return "Buitenland"
+
 
 def split_by_department(members):
     s = dict()
@@ -416,6 +430,7 @@ def split_by_department(members):
         s[d][id] = members[id]
     return s
 
+
 def dosql(c, sql, value, dryrun=False):
     # Consolidate repeated SQL-code into one function (DRY)
     logger.debug((sql % value).encode("utf-8"))
@@ -429,11 +444,13 @@ def dosql(c, sql, value, dryrun=False):
     for msg in c.messages:
         logger.debug(msg)
 
+
 def log_script_arguments():
     commandArguments = "Start script with command: "
     for arg in sys.argv:
         commandArguments += arg + " "
     logger.info(commandArguments)
+
 
 def trymkdir(dir, perm=0700):
     # Make directory if needed
@@ -445,16 +462,19 @@ def trymkdir(dir, perm=0700):
         else:
             raise
 
+
 def excel_to_date(xldate):
     # Convert Excel-date (float) to datetime-object
     datetuple = xlrd.xldate_as_tuple(xldate, 0)
     date = datetime.date(*datetuple[:3])
     return date
 
+
 def prepare_subscribe_query(email, listname):
     value = (email, listname, NOW)
     sql = "INSERT IGNORE INTO 2gWw_jnews_listssubscribers (subscriber_id, list_id, subdate) VALUES ((SELECT id FROM 2gWw_jnews_subscribers WHERE email=%s LIMIT 1), (SELECT id FROM 2gWw_jnews_lists WHERE list_name=%s), %s) ON DUPLICATE KEY UPDATE list_id = list_id"
     return sql, value
+
 
 def format_name(fullname, firstname, lastname):
     # Try to format a sensible name even with incomplete data
@@ -467,6 +487,7 @@ def format_name(fullname, firstname, lastname):
     else:
         # No data at all, return error
         return "ONBEKENDE_NAAM"
+
 
 def doldap_remove(id):
     l = ldap.initialize(ldapcfg["name"])
@@ -482,7 +503,8 @@ def doldap_remove(id):
     except ldap.LDAPError, e:
         logger.warning(str(e) + " - Could not remove - "+str(int(id)))
         #raise # this can happen because the database is transactional but the LDAP not yet (script can come here twice)
-    l.unbind_s();
+    l.unbind_s()
+
 
 def doldap_add(lidnummer, naam, mail, afdeling):
     l = ldap.initialize(ldapcfg["name"])
@@ -506,6 +528,7 @@ def doldap_add(lidnummer, naam, mail, afdeling):
         logger.warning(str(e) + " - Could not add - "+str(int(lidnummer)))
         #raise # this can happen because the database is transactional but the LDAP not yet (script can come here twice)
     l.unbind_s()
+
 
 def doldap_modify(lidnummer, naam, mail, afdeling):
     l = ldap.initialize(ldapcfg["name"])
