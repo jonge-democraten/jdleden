@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3.4
 # -*- coding: utf-8 -*-
 
 import sys
@@ -8,11 +8,11 @@ import time
 import datetime
 import hashlib
 import logging
-import ConfigParser
+import configparser
 from optparse import OptionParser
 from afdelingen import AFDELINGEN
 
-import MySQLdb
+import pymysql
 import xlrd
 import xlwt
 import ldap
@@ -75,7 +75,7 @@ COLUMN_WIDTH = [
 ]
 
 # Read configuration-file
-config = ConfigParser.RawConfigParser()
+config = configparser.RawConfigParser()
 config.read(os.path.join(SCRIPTDIR, "ledenlijst.cfg"))
 dbcfg = dict(config.items("database"))
 ldapcfg = dict(config.items("ldapcfg"))
@@ -142,7 +142,7 @@ def main():
         # Use email-address instead of member-id to identify subscriptions.
         # Member-id cannot be used because of risk of collisions from two
         # independent subscription-vectors (webform and D66 administration).
-        db = MySQLdb.connect(user=dbcfg["user"], passwd=dbcfg["password"], db=dbcfg["name"], charset='utf8', use_unicode=True)
+        db = pymysql.connect(user=dbcfg["user"], passwd=dbcfg["password"], db=dbcfg["name"], charset='utf8', use_unicode=True)
 
         # Make everything transactional, will rollback in case of exception
         try:
@@ -275,8 +275,9 @@ def parse_options(parser, options, args):
         
         oldfile = args[0]
         newfile = args[1]
-        with open(oldfile, "r") as f:
-            oldsha = hashlib.sha512(f.read()).hexdigest()
+        with open(oldfile, "rb") as f:
+            hash = hashlib.sha512(f.read())
+            oldsha = hash.hexdigest()
         try:
             f = open(CHECKSUMFILE, "r") 
         except IOError as e:
@@ -300,7 +301,7 @@ def parse_options(parser, options, args):
 
 def create_new_checksum(newfile):
     logger.info("Creating new checksum.txt...")
-    with open(newfile, "r") as f:
+    with open(newfile, "rb") as f:
         newsha = hashlib.sha512(f.read()).hexdigest()
     with open(CHECKSUMFILE, "w") as checksumfile: # Write sha512sum-compatible checksum-file
         checksumfile.write("%s  %s\n" % (newsha, newfile))
@@ -309,7 +310,7 @@ def create_new_checksum(newfile):
 def write_department_excels(new, directory_name):
     split = split_by_department(new)
     outdir = os.path.join(directory_name, time.strftime("%F %T"))
-    trymkdir(outdir, 0700)
+    trymkdir(outdir, 0o700)
     for dept in split.keys():
         fileDepartment = os.path.join(outdir, dept + ".xls")
         write_xls(fileDepartment, split[dept])
@@ -330,14 +331,14 @@ def read_xls(f):
         logger.critical("Last row does not seem to be a Total, possible format-change. Please contact the ICT-team if you are not completely sure what to do.")
         sys.exit(1)
     # XXX adjust this number if JD grows or shrinks
-    if sheet.cell_value(lastrow, 1) not in xrange(0000,6000):
+    if sheet.cell_value(lastrow, 1) not in range(0000,6000):
         logger.critical("Number of members in last row very different from hardcoded safeguard. Please contact the ICT-team.")
         sys.exit(1)
-    if sheet.nrows not in xrange(0000,6000):
+    if sheet.nrows not in range(0000,6000):
         logger.critical("Total number of rows very different from hardcoded safeguard. Please contact the ICT-team.")
         sys.exit(1)
     # Store all members in dict by member-number
-    for i in xrange(1,lastrow):  # Skip header and "Totaal:" row
+    for i in range(1,lastrow):  # Skip header and "Totaal:" row
         row = sheet.row(i)
         if len(row) != EXPECTED_INPUT_COLUMNS:
             # If this happens, consult comment near constants
@@ -371,14 +372,14 @@ def write_xls(f, members):
     book = xlwt.Workbook()
     sheet = book.add_sheet("Leden %s" % NOWHUMAN.split(" ")[0])
     # Column widths
-    for i in xrange(len(COLUMN_WIDTH)):
+    for i in range(len(COLUMN_WIDTH)):
         sheet.col(i).width = COLUMN_WIDTH[i]
     # First row of spreadsheet
-    for i in xrange(len(HEADER)):
+    for i in range(len(HEADER)):
         sheet.write(0, i, HEADER[i], STYLE_HEADER)
     row = 1  # Row 0 is header
     for id in members.keys():
-        for c in xrange(len(members[id])):
+        for c in range(len(members[id])):
             sheet.write(row, c, members[id][c], CELL_STYLE[c])
         row += 1
     return book.save(f)
@@ -425,7 +426,7 @@ def split_by_department(members):
             d = "Buitenland"
         else:
             d = find_department(pc)
-        if not s.has_key(d):
+        if not d in s:
             s[d] = dict()
         s[d][id] = members[id]
     return s
@@ -437,12 +438,10 @@ def dosql(c, sql, value, dryrun=False):
     if not dryrun:
         try:
             c.execute(sql, value)
-        except MySQLdb.Error, e:
+        except pymysql.Error as e:
             logger.error("MySQL Error: " + str(e))
             logger.error("Error executing query: " + (sql % value).encode("utf-8"))
-            raise
-    for msg in c.messages:
-        logger.debug(msg)
+            raise e
 
 
 def log_script_arguments():
@@ -452,7 +451,7 @@ def log_script_arguments():
     logger.info(commandArguments)
 
 
-def trymkdir(dir, perm=0700):
+def trymkdir(dir, perm=0o700):
     # Make directory if needed
     try:
         os.makedirs(dir, perm)
@@ -493,14 +492,14 @@ def doldap_remove(id):
     l = ldap.initialize(ldapcfg["name"])
     try:
         l.simple_bind_s(ldapcfg["dn"], ldapcfg["password"])
-    except ldap.LDAPError, e:
+    except ldap.LDAPError as e:
         logger.critical(str(e))
         raise
 
     dn_to_delete = "cn="+str(int(id))+",ou=users,dc=jd,dc=nl"
     try:
         l.delete_s(dn_to_delete)
-    except ldap.LDAPError, e:
+    except ldap.LDAPError as e:
         logger.warning(str(e) + " - Could not remove - "+str(int(id)))
         #raise # this can happen because the database is transactional but the LDAP not yet (script can come here twice)
     l.unbind_s()
@@ -510,7 +509,7 @@ def doldap_add(lidnummer, naam, mail, afdeling):
     l = ldap.initialize(ldapcfg["name"])
     try:
         l.simple_bind_s(ldapcfg["dn"], ldapcfg["password"])
-    except ldap.LDAPError, e:
+    except ldap.LDAPError as e:
         logger.critical(str(e))
         #raise # this can happen because the database is transactional but the LDAP not yet (script can come here twice)
 
@@ -524,7 +523,7 @@ def doldap_add(lidnummer, naam, mail, afdeling):
     ldif = modlist.addModlist(attrs)
     try:
         l.add_s(dn_to_add, ldif)
-    except ldap.LDAPError, e:
+    except ldap.LDAPError as e:
         logger.warning(str(e) + " - Could not add - "+str(int(lidnummer)))
         #raise # this can happen because the database is transactional but the LDAP not yet (script can come here twice)
     l.unbind_s()
@@ -534,7 +533,7 @@ def doldap_modify(lidnummer, naam, mail, afdeling):
     l = ldap.initialize(ldapcfg["name"])
     try:
         l.simple_bind_s(ldapcfg["dn"], ldapcfg["password"])
-    except ldap.LDAPError, e:
+    except ldap.LDAPError as e:
         logger.critical(str(e))
         raise
 
@@ -544,7 +543,7 @@ def doldap_modify(lidnummer, naam, mail, afdeling):
 
     try:
         l.modify_s(dn_to_mod, attrs)
-    except ldap.LDAPError, e:
+    except ldap.LDAPError as e:
         logger.warning(str(e) + " - Could not modify - "+str(int(lidnummer)))
         raise
     l.unbind_s()
