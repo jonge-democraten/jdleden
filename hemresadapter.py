@@ -20,24 +20,24 @@ class HemresAdapter(object):
         self.jdwebsite_manage_filepath = website_config['jdwebsite_manage_filepath']
         assert(os.path.exists(self.jdwebsite_manage_filepath))
 
-    def add_member_to_list(self, member_id, list_label):
+    def subscribe_member_to_list(self, member_id, list_label):
         print('add_member_from_list')
         subprocess.call([self.python_bin_filepath, self.jdwebsite_manage_filepath, "janeus_subscribe", str(member_id), list_label])
 
-    def remove_member_from_list(self, member_id, list_label):
+    def unsubscribe_member_from_list(self, member_id, list_label):
         print('remove_member_from_list')
         subprocess.call([self.python_bin_filepath, self.jdwebsite_manage_filepath, "janeus_unsubscribe", str(member_id), list_label])
 
     def move_member(self, member_id, list_label_from, list_label_to):
         print('move_member')
-        self.remove_member_from_list(member_id, list_label_from)
-        self.add_member_to_list(member_id, list_label_to)
+        self.unsubscribe_member_from_list(member_id, list_label_from)
+        self.subscribe_member_to_list(member_id, list_label_to)
 
 
 def test():
     hemres = HemresAdapter()
-    hemres.add_member_to_list(1, 'UTRECHT')
-    hemres.remove_member_from_list(1, 'UTRECHT')
+    hemres.subscribe_member_to_list(1, 'UTRECHT')
+    hemres.unsubscribe_member_from_list(1, 'UTRECHT')
     hemres.move_member(1, 'AMSTERDAM', 'UTRECHT')
 
 if __name__ == '__main__':
