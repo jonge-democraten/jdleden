@@ -6,11 +6,12 @@ import os
 import subprocess
 import configparser
 
+
 class HemresAdapter(object):
 
     def __init__(self):
-        SCRIPTDIR = os.path.dirname(os.path.realpath(__file__))
-        config_path = os.path.join(SCRIPTDIR, 'ledenlijst.cfg')
+        scriptdir = os.path.dirname(os.path.realpath(__file__))
+        config_path = os.path.join(scriptdir, 'ledenlijst.cfg')
         assert(os.path.exists(config_path))
         config = configparser.RawConfigParser()
         config.read(config_path)
