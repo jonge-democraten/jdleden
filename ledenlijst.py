@@ -123,7 +123,7 @@ def main():
     write_department_excels(new, "uitvoer")
     logger.info("Department-xls complete")
 
-    S# Don't run this block in Excel-only-mode
+    # Don't run this block in Excel-only-mode
     if not options.only_excel:
         logger.info("Reading %s ..." % oldfile)
         old = read_xls(oldfile)
