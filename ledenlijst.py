@@ -201,17 +201,17 @@ def subscribe_members_to_maillist(plus_split, is_dryrun):
     for d in plus_split.keys():
         for id in plus_split[d].keys():
             if not is_dryrun:
-                hemres.subscribe_member_to_list(id, "Digizine")
-                hemres.subscribe_member_to_list(id, "Nieuwsbrief " + d)
+                hemres.subscribe_member_to_list(id, "digizine")
+                hemres.subscribe_member_to_list(id, "nieuwsbrief-" + d.lower())
 
 
 def move_members_to_new_department(old, moved_split, is_dryrun):
     hemres = HemresAdapter()
     for department in moved_split.keys():
         for id in moved_split[department].keys():
-            newlist = "Nieuwsbrief " + department
+            newlist = "nieuwsbrief-" + department.lower()
             olddept = find_department(parse_postcode(old[id][POSTCODE]))
-            oldlist = "Nieuwsbrief " + olddept
+            oldlist = "nieuwsbrief-" + olddept.lower()
             if not is_dryrun:
                 hemres.move_member(id, oldlist, newlist)
 
