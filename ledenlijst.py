@@ -97,7 +97,7 @@ def main():
     newfile, oldfile = parse_options(parser, options, args)
 
     if options.dryrun:
-      logger.warning("Dry-run. No LDAP and newsletter changes.")
+        logger.warning("Dry-run. No LDAP and newsletter changes.")
 
     logger.info("Reading %s ..." % newfile)
     new = read_xls(newfile)
@@ -119,7 +119,7 @@ def main():
         logger.info("Computing complete")
 
         # Remove old members
-        logger.info("Removing " + str(len(former_members)) + " members..." )
+        logger.info("Removing " + str(len(former_members)) + " members...")
         remove_members_from_ldap(former_members, options.dryrun)
         logger.info("Removing complete.")
         # Update changed members
@@ -141,13 +141,13 @@ def main():
         write_department_excels(moved, "verhuisd")
         logger.info("Moving complete.")
         logger.info("=== Summary === ")
-        logger.info("Removed: " + str(len(former_members)) )
-        logger.info("Added: " + str(len(new_members)) )
-        logger.info("Updated: " + str(len(changed_members)) )
-        logger.info("Changed department: " + str(len(moved)) )
+        logger.info("Removed: " + str(len(former_members)))
+        logger.info("Added: " + str(len(new_members)))
+        logger.info("Updated: " + str(len(changed_members)))
+        logger.info("Changed department: " + str(len(moved)))
         logger.info("==========")
         if not options.dryrun:
-            create_new_checksum(newfile);
+            create_new_checksum(newfile)
         logger.info("SUCCESS!")
         if options.dryrun:
             logger.warning("Dry-run. No actual LDAP and Hemres changes!")
@@ -192,12 +192,12 @@ def subscribe_members_to_maillist(plus_split, is_dryrun):
 def move_members_to_new_department(old, moved_split, is_dryrun):
     hemres = HemresAdapter()
     for department in moved_split.keys():
-        for id in moved_split[department].keys():
+        for member_id in moved_split[department].keys():
             newlist = "nieuwsbrief-" + department.lower()
-            olddept = find_department(parse_postcode(old[id][POSTCODE]))
+            olddept = find_department(parse_postcode(old[member_id][POSTCODE]))
             oldlist = "nieuwsbrief-" + olddept.lower()
             if not is_dryrun:
-                hemres.move_member(id, oldlist, newlist)
+                hemres.move_member(member_id, oldlist, newlist)
 
 
 def parse_options(parser, options, args):
@@ -229,7 +229,7 @@ def parse_options(parser, options, args):
             else:
                 raise
         else:
-            storedsha = f.readline().split()[0] # Read sha512sum-compatible checksum-file
+            storedsha = f.readline().split()[0]  # Read sha512sum-compatible checksum-file
 
         if oldsha == storedsha:
             logger.info("Input files are sane (checksums match)")
@@ -244,7 +244,7 @@ def create_new_checksum(newfile):
     logger.info("Creating new checksum.txt...")
     with open(newfile, "rb") as f:
         newsha = hashlib.sha512(f.read()).hexdigest()
-    with open(CHECKSUMFILE, "w") as checksumfile: # Write sha512sum-compatible checksum-file
+    with open(CHECKSUMFILE, "w") as checksumfile:  # Write sha512sum-compatible checksum-file
         checksumfile.write("%s  %s\n" % (newsha, newfile))
 
 
