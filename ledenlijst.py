@@ -80,7 +80,7 @@ config.read(os.path.join(SCRIPTDIR, "ledenlijst.cfg"))
 ldapcfg = dict(config.items("ldapcfg"))
 
 # Set up logging to console, debug.log and info.log
-logger = logging.getLogger()
+logger = logging.getLogger('jdleden')
 logger.setLevel(logging.DEBUG)
 ch = logging.StreamHandler()
 ch.setLevel(logging.INFO)
