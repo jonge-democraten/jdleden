@@ -2,9 +2,8 @@
 
 from optparse import OptionParser
 
-import MySQLdb
-
 import ledenlijst
+from hemresadapter import HemresAdapter
 
 import afdelingenoud
 import afdelingen
@@ -42,38 +41,24 @@ Usage: %prog [options] ledenlijst.xls"""
     logger.info("Reading complete")
     logger.info("Calculating reallocated members")
     
-    logger.info('leden die verplaatst gaan worden:')
+    logger.info('Members to be moved:')
     reallocated = get_reallocated_members(members)
     for realloc in reallocated:
-        logger.info( realloc[9] + ' van ' + find_afdeling( afdelingen_oud, ledenlijst.parse_postcode(realloc[ledenlijst.POSTCODE]) ) + ' naar ' + find_afdeling( afdelingen_new, ledenlijst.parse_postcode(realloc[ledenlijst.POSTCODE]) ) )
-    
-    logger.info("Connecting to database")
-    dbcfg = ledenlijst.dbcfg
-    db = MySQLdb.connect(user=dbcfg["user"], passwd=dbcfg["password"], db=dbcfg["name"])
-    # Make everything transactional, will rollback in case of exception
-    try:
-        with db:
-            logger.info("Doing mass (un)subscribes")
-            c = db.cursor()
-            # Iterate over reallocated.values() and perform the moving
-            for member in reallocated:
-                email = db.escape_string(member[ledenlijst.EMAIL])
-                olddept = find_afdeling( afdelingenoud.AFDELINGEN, ledenlijst.parse_postcode(member[ledenlijst.POSTCODE]) )
-                oldlist = "Nieuwsbrief " + olddept
-                newdept = find_afdeling( afdelingen.AFDELINGEN, ledenlijst.parse_postcode(member[ledenlijst.POSTCODE]) )
-                newlist = "Nieuwsbrief " + newdept
-                # Subscribe new
-                sql, value = ledenlijst.prepare_subscribe_query(email, newlist)
-                ledenlijst.dosql(c, sql, value, options.dryrun)
-                # Unsubscribe old
-                value = (ledenlijst.NOW, oldlist, email)
-                sql = "UPDATE IGNORE 2gWw_jnews_listssubscribers SET unsubdate=%s, unsubscribe=1 WHERE list_id IN (SELECT id FROM 2gWw_jnews_lists WHERE list_name=%s) AND subscriber_id = (SELECT id FROM 2gWw_jnews_subscribers WHERE email=%s)"
-                ledenlijst.dosql(c, sql, value, options.dryrun)
-            if options.dryrun:
-                logger.warning("Dry-run. No actual database changes!")
-    except:
-        logger.error("FAILURE: Problem while trying to execute database query. Transaction is not committed! Nothing has changed in the database.")
-        logger.error("Exception:", exc_info=sys.exc_info())
+        logger.info(realloc[9] + ' from ' + find_afdeling( afdelingen_oud, ledenlijst.parse_postcode(realloc[ledenlijst.POSTCODE])) + ' to ' + find_afdeling( afdelingen_new, ledenlijst.parse_postcode(realloc[ledenlijst.POSTCODE]) ) )
+
+    logger.info("Doing mass (un)subscribes")
+    # Iterate over reallocated.values() and perform the moving
+    hemresadapter = HemresAdapter()
+    for member in reallocated:
+        olddept = find_afdeling(afdelingenoud.AFDELINGEN, ledenlijst.parse_postcode(member[ledenlijst.POSTCODE]))
+        newdept = find_afdeling(afdelingen.AFDELINGEN, ledenlijst.parse_postcode(member[ledenlijst.POSTCODE]))
+        oldlist = "nieuwsbrief-" + olddept.lower()
+        newlist = "nieuwsbrief-" + newdept.lower()
+        if not options.dryrun:
+            hemresadapter.unsubscribe_member_from_list(member[ledenlijst.LIDNUMMER], oldlist)
+            hemresadapter.subscribe_member_to_list(member[ledenlijst.LIDNUMMER], newlist)
+    if options.dryrun:
+        logger.warning("Dry-run. No actual database changes!")
 
 
 def get_reallocated_members(members):
