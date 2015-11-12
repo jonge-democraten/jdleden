@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3.4
 
 from optparse import OptionParser
 
@@ -25,7 +25,7 @@ Usage: %prog [options] ledenlijst.xls"""
         parser.error("Onjuist aantal argumenten.")
     try:
         newfile = args[0]
-    except ValueError, AttributeError:
+    except (ValueError, AttributeError):
         parser.error("Fout in een van de argumenten.")
         
     logger = ledenlijst.logger
