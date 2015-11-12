@@ -74,7 +74,8 @@ Usage: %prog [options] ledenlijst.xls"""
     except:
         logger.error("FAILURE: Problem while trying to execute database query. Transaction is not committed! Nothing has changed in the database.")
         logger.error("Exception:", exc_info=sys.exc_info())
-          
+
+
 def get_reallocated_members(members):
     reallocated_members = []
     for member in members.values():
@@ -97,7 +98,7 @@ def get_reallocated_members(members):
 def find_afdeling(afdelingsgrenzen, postcode):   
     for afdeling, postcodes in afdelingsgrenzen.items():
         for postcoderange in postcodes:
-            if (postcode >= postcoderange[0] and postcode <= postcoderange[1]):
+            if postcode >= postcoderange[0] and postcode <= postcoderange[1]:
                 return afdeling
     return 'Afdeling unknown'
 
@@ -121,17 +122,17 @@ def check_overlap_afdelingen(afdelingsgrenzen):
         afdelingen = []
         for afdeling, postcodes in afdelingsgrenzen.items():
             for postcoderange in postcodes:
-                if (i >= postcoderange[0] and i <= postcoderange[1]):
+                if i >= postcoderange[0] and i <= postcoderange[1]:
                     counter += 1
                     afdelingen.append(afdeling)
         if counter > 1:
             overlapping_postcodes.append(i)
-            ledenlijst.logger.warning( 'postcode: ' + str(i) + ' in afdelingen: ' + str(afdelingen) )
+            ledenlijst.logger.warning('postcode: ' + str(i) + ' in afdelingen: ' + str(afdelingen))
         if counter == 0:
-            ledenlijst.logger.warning( 'postcode: ' + str(i) + ' heeft geen afdeling' )    
+            ledenlijst.logger.warning('postcode: ' + str(i) + ' heeft geen afdeling')
     
     if len(overlapping_postcodes) > 0:
-        ledenlijst.logger.error( 'overlapping postcodes: ' + str(len(overlapping_postcodes)) )
+        ledenlijst.logger.error('overlapping postcodes: ' + str(len(overlapping_postcodes)))
 
         
 if __name__ == "__main__":
