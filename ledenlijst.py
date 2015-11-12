@@ -7,7 +7,6 @@ import errno
 import time
 import datetime
 import hashlib
-import logging
 import configparser
 from optparse import OptionParser
 from afdelingen import AFDELINGEN
@@ -79,22 +78,7 @@ config = configparser.RawConfigParser()
 config.read(os.path.join(SCRIPTDIR, "ledenlijst.cfg"))
 ldapcfg = dict(config.items("ldapcfg"))
 
-# Set up logging to console, debug.log and info.log
-logger = logging.getLogger('jdleden')
-logger.setLevel(logging.DEBUG)
-ch = logging.StreamHandler()
-ch.setLevel(logging.INFO)
-fhd = logging.FileHandler(os.path.join(SCRIPTDIR, "debug.log"))
-fhd.setLevel(logging.DEBUG)
-fhi = logging.FileHandler(os.path.join(SCRIPTDIR, "info.log"))
-fhi.setLevel(logging.INFO)
-formatter = logging.Formatter("%(asctime)s %(levelname)s: %(message)s")
-ch.setFormatter(formatter)
-fhd.setFormatter(formatter)
-fhi.setFormatter(formatter)
-logger.addHandler(ch)
-logger.addHandler(fhd)
-logger.addHandler(fhi)
+from jdledenlogger import logger
 
 
 def main():

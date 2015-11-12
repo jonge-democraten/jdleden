@@ -4,10 +4,10 @@ from optparse import OptionParser
 
 import ledenlijst
 from hemresadapter import HemresAdapter
+from jdledenlogger import logger
 
 import afdelingenoud
 import afdelingen
-
 
 def main():
     # Define command-line options
@@ -26,8 +26,6 @@ Usage: %prog [options] ledenlijst.xls"""
         newfile = args[0]
     except (ValueError, AttributeError):
         parser.error("Fout in een van de argumenten.")
-        
-    logger = ledenlijst.logger
 
     afdelingen_new = afdelingen.AFDELINGEN
     afdelingen_oud = afdelingenoud.AFDELINGEN

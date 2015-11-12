@@ -6,8 +6,7 @@ import os
 import subprocess
 import configparser
 
-import logging
-logger = logging.getLogger('jdleden')
+from jdledenlogger import logger
 
 
 class HemresAdapter(object):
@@ -25,15 +24,17 @@ class HemresAdapter(object):
         assert(os.path.exists(self.jdwebsite_manage_filepath))
 
     def subscribe_member_to_list(self, member_id, list_label):
-        logger.info('add_member_from_list')
-        subprocess.call([self.python_bin_filepath, self.jdwebsite_manage_filepath, "janeus_subscribe", str(member_id), list_label])
+        logger.debug('add_member_from_list(): member: ' + str(member_id) + ', list: ' + list_label)
+        output = subprocess.check_output([self.python_bin_filepath, self.jdwebsite_manage_filepath, "janeus_subscribe", str(member_id), list_label])
+        logger.debug('cout: ' + str(output))
 
     def unsubscribe_member_from_list(self, member_id, list_label):
-        logger.info('remove_member_from_list')
-        subprocess.call([self.python_bin_filepath, self.jdwebsite_manage_filepath, "janeus_unsubscribe", str(member_id), list_label])
+        logger.debug('remove_member_from_list(): member: ' + str(member_id) + ', list: ' + list_label)
+        output = subprocess.check_output([self.python_bin_filepath, self.jdwebsite_manage_filepath, "janeus_unsubscribe", str(member_id), list_label])
+        logger.debug('cout: ' + str(output))
 
     def move_member(self, member_id, list_label_from, list_label_to):
-        logger.info('move_member')
+        logger.debug('move_member()')
         self.unsubscribe_member_from_list(member_id, list_label_from)
         self.subscribe_member_to_list(member_id, list_label_to)
 
