@@ -438,10 +438,10 @@ def doldap_add(lidnummer, naam, mail, afdeling):
 
     dn_to_add = "cn="+str(int(lidnummer))+",ou=users,dc=jd,dc=nl"
     attrs = {}
-    attrs['objectclass'] = ['inetOrgPerson']
-    attrs['sn'] = naam.encode('utf-8')
-    attrs['mail'] = mail.encode('utf-8')
-    attrs['ou'] = afdeling
+    attrs['objectclass'] = ['inetOrgPerson'.encode('utf8')]
+    attrs['sn'] = naam.encode('utf8')
+    attrs['mail'] = mail.encode('utf8')
+    attrs['ou'] = afdeling.encode('utf8')
 
     ldif = modlist.addModlist(attrs)
     try:
@@ -462,7 +462,7 @@ def doldap_modify(lidnummer, naam, mail, afdeling):
 
     dn_to_mod = "cn="+str(int(lidnummer))+",ou=users,dc=jd,dc=nl"
 
-    attrs = [(ldap.MOD_REPLACE, "sn", naam.encode('utf-8')), (ldap.MOD_REPLACE, "mail", mail.encode('utf-8')), (ldap.MOD_REPLACE, "ou", afdeling)]
+    attrs = [(ldap.MOD_REPLACE, "sn", naam.encode('utf8')), (ldap.MOD_REPLACE, "mail", mail.encode('utf8')), (ldap.MOD_REPLACE, "ou", afdeling.encode('utf8'))]
 
     try:
         l.modify_s(dn_to_mod, attrs)
