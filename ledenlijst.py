@@ -261,25 +261,22 @@ def read_xls(f):
     # Read xls file from disk
     book = xlrd.open_workbook(f)
     sheet = book.sheet_by_index(0)
-    lastrow = sheet.nrows-1
     leden = {}
+    # Make sure the last value is an integer. There was a time when the last cell was called "Totaal", this should not be the case anymore.
+    try:
+        int(sheet.row_values(sheet.nrows-1, 0))
+    except ValueError:
+        logger.critical("Last row in first column is not an integer. Please contact the ICT-team.")
+        sys.exit(1)
     # Confirm first row matches with expectations
     if sheet.row_values(0) != EXPECTED_HEADERS:
         logger.critical("First row does not match expectations, possible format-change. Please contact the ICT-team if you are not completely sure what to do.")
         sys.exit(1)
-    # Confirm last row is a sensible total
-    if sheet.cell_value(lastrow, 0) != 'Totaal':
-        logger.critical("Last row does not seem to be a Total, possible format-change. Please contact the ICT-team if you are not completely sure what to do.")
-        sys.exit(1)
-    # XXX adjust this number if JD grows or shrinks
-    if sheet.cell_value(lastrow, 1) not in range(0000,6000):
-        logger.critical("Number of members in last row very different from hardcoded safeguard. Please contact the ICT-team.")
-        sys.exit(1)
-    if sheet.nrows not in range(0000,6000):
+    if sheet.nrows not in range(4000,7000):
         logger.critical("Total number of rows very different from hardcoded safeguard. Please contact the ICT-team.")
         sys.exit(1)
     # Store all members in dict by member-number
-    for i in range(1,lastrow):  # Skip header and "Totaal:" row
+    for i in range(1,sheet.nrows):
         row = sheet.row(i)
         if len(row) != EXPECTED_INPUT_COLUMNS:
             # If this happens, consult comment near constants
