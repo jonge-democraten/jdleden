@@ -264,7 +264,7 @@ def read_xls(f):
     leden = {}
     # Make sure the last value is an integer. There was a time when the last cell was called "Totaal", this should not be the case anymore.
     try:
-        int(sheet.row_values(sheet.nrows-1, 0))
+        int(sheet.cell_value(sheet.nrows-1, 0))
     except ValueError:
         logger.critical("Last row in first column is not an integer. Please contact the ICT-team.")
         sys.exit(1)
