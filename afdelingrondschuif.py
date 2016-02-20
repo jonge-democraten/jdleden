@@ -42,7 +42,7 @@ Usage: %prog [options] ledenlijst.xls"""
     logger.info('Members to be moved:')
     reallocated = get_reallocated_members(members)
     for realloc in reallocated:
-        logger.info(realloc[9] + ' from ' + find_afdeling( afdelingen_oud, ledenlijst.parse_postcode(realloc[ledenlijst.POSTCODE])) + ' to ' + find_afdeling( afdelingen_new, ledenlijst.parse_postcode(realloc[ledenlijst.POSTCODE]) ) )
+        logger.info('Move a member living in ' + realloc[9] + ' from ' + find_afdeling( afdelingen_oud, ledenlijst.parse_postcode(realloc[ledenlijst.POSTCODE])) + ' to ' + find_afdeling( afdelingen_new, ledenlijst.parse_postcode(realloc[ledenlijst.POSTCODE]) ) )
 
     logger.info("Doing mass (un)subscribes")
     # Iterate over reallocated.values() and perform the moving
