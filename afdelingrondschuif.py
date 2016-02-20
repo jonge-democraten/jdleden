@@ -73,7 +73,7 @@ def get_reallocated_members(members):
             if afdeling_new != afdeling_old:
                 reallocated_members.append(member)
         else:
-            ledenlijst.logger.warning('invalid postcode: ' + str(postcode))
+            ledenlijst.logger.warning('invalid postcode: ' + str(postcode) + ' for member living in ' + member[ledenlijst.WOONPLAATS])
     
     return reallocated_members
  
