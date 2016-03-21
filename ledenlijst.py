@@ -280,11 +280,6 @@ def read_xls(f):
     # Store all members in dict by member-number
     for i in range(1,sheet.nrows):
         row = sheet.row(i)
-        if len(row) != EXPECTED_INPUT_COLUMNS:
-            # If this happens, consult comment near constants
-            logger.critical("Wrong amount of columns in input-data, "\
-                    "got %d, expected %d." % (len(row), EXPECTED_INPUT_COLUMNS))
-            sys.exit(1)
         leden[int(row[LIDNUMMER].value)] = [c.value for c in row]
     # Sanitise data
     for id in leden.keys():
