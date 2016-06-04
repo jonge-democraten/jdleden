@@ -45,20 +45,20 @@ ACHTERNAAM = 17
 # If amount or ordering of columns in input-format changes, several
 # code changes are needed:
 # - change numbers of extra columns
-# - change HEADER, CELL_STYLE and COLUMN_WIDTH
+# - change HEADERS, CELL_STYLES and COLUMN_WIDTHS
 
 # Excel-output formatting
 STYLE_DEFAULT = xlwt.Style.default_style
 STYLE_HEADER = xlwt.easyxf("font: bold on")
 STYLE_DATE = xlwt.easyxf(num_format_str="YYYY-MM-DD")
-HEADER = [
+HEADERS = [
     "Lidnummer",        "Lidsoort",         "Lid sinds",        "Lid beeindigd",
     "Volledige naam",   "Geslacht",         "Geboortedatum",    "Straat",
     "Postcode",         "Plaats",           "Emailadres",       "Afdeling",
     "Regio",            "Telefoonnummer",   "Mobiel",           "Stemrecht",
     "Voorna(a)m(en)",   "Achternaam",
 ]
-CELL_STYLE = [
+CELL_STYLES = [
     STYLE_DEFAULT,      STYLE_DEFAULT,      STYLE_DATE,         STYLE_DATE,
     STYLE_DEFAULT,      STYLE_DEFAULT,      STYLE_DATE,         STYLE_DEFAULT,
     STYLE_DEFAULT,      STYLE_DEFAULT,      STYLE_DEFAULT,      STYLE_DEFAULT,
@@ -66,7 +66,7 @@ CELL_STYLE = [
     STYLE_DEFAULT,      STYLE_DEFAULT,
 ]
 # Every 1000 is 0.3 inch is 7.62 mm (full metal jacket)
-COLUMN_WIDTH = [
+COLUMN_WIDTHS = [
     2000,               3000,               3000,               3000,
     6000,               3000,               3000,               6000,
     3000,               5000,               8000,               5000,
@@ -307,15 +307,15 @@ def write_xls(f, members):
     book = xlwt.Workbook()
     sheet = book.add_sheet("Leden %s" % NOWHUMAN.split(" ")[0])
     # Column widths
-    for i in range(len(COLUMN_WIDTH)):
-        sheet.col(i).width = COLUMN_WIDTH[i]
+    for i in range(len(COLUMN_WIDTHS)):
+        sheet.col(i).width = COLUMN_WIDTHS[i]
     # First row of spreadsheet
-    for i in range(len(HEADER)):
-        sheet.write(0, i, HEADER[i], STYLE_HEADER)
+    for i in range(len(HEADERS)):
+        sheet.write(0, i, HEADERS[i], STYLE_HEADER)
     row = 1  # Row 0 is header
     for id in members.keys():
         for c in range(len(members[id])):
-            sheet.write(row, c, members[id][c], CELL_STYLE[c])
+            sheet.write(row, c, members[id][c], CELL_STYLES[c])
         row += 1
     return book.save(f)
 
