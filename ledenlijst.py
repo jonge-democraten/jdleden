@@ -26,47 +26,66 @@ SCRIPTDIR = os.path.dirname(os.path.realpath(__file__))
 CHECKSUMFILE = os.path.join(SCRIPTDIR, "checksum.txt")
 
 # Give all important columns a name
-LIDNUMMER = 0
-#LIDSINDS = 2
-#LIDTOT = 3
-NAAM  = 4
-GEBDATUM = 6
-POSTCODE = 8
+LIDNUMMER  = 0
+NAAM       = 4
+POSTCODE   = 8
 WOONPLAATS = 9
-EMAIL = 10
-REGIO = 12
-STEMRECHT = 15
-# Aid to detect input-format changes
-EXPECTED_HEADERS = ['Lidnummer', 'Lidsoort', 'Lid sinds', 'Lid beeindigd', 'Volledige naam', 'Geslacht', 'Geboortedatum', 'Straat', 'Postcode', 'Plaats', 'Emailadres', 'Afdeling', 'Regio', 'Telefoonnummer', 'Mobiel', 'Stemrecht']
-# If amount or ordering of columns in input-format changes, several
-# code changes are needed:
-# - change numbers of extra columns
-# - change HEADERS, CELL_STYLES and COLUMN_WIDTHS
+LAND       = 11
+STEMRECHT  = 17
+EMAIL      = 18
+GEBDATUM   = 22
+
+# The headers of the input file must exactly match the following definition
+HEADERS = [
+    u'Relatienummer',
+    u'Achternaam', u'Voorletters', u'Tussenvoegsel', u'Volledige naam',
+    u'Bez. straat', u'Adres 1: huisnummer', u'Toevoeging',
+    u'Postcode (correspondentie adres)', u'Woonplaats (correspondentie adres)',
+    u'Gemeente', u'Land (correspondentie adres)',
+    u'Geen lid sinds', u'Geen abonnement sinds',
+    u'Is lid D66', u'Stemrecht D66', u'Is lid JD', u'Stemrecht JD',
+    u'E-mail privé', u'Mobiele telefoon', u'Prive telefoonnummer',
+    u'Geslacht', u'Geboortedatum',
+    u'Ontbrekende gegevens', u'Vrij tekstveld test',
+    u'Aanhef formeel', u'Aanhef informeel',
+    u'Betaalmethodevoorkeur'
+]
 
 # Excel-output formatting
 STYLE_DEFAULT = xlwt.Style.default_style
 STYLE_HEADER = xlwt.easyxf("font: bold on")
 STYLE_DATE = xlwt.easyxf(num_format_str="YYYY-MM-DD")
-HEADERS = [
-    "Lidnummer",        "Lidsoort",         "Lid sinds",        "Lid beeindigd",
-    "Volledige naam",   "Geslacht",         "Geboortedatum",    "Straat",
-    "Postcode",         "Plaats",           "Emailadres",       "Afdeling",
-    "Regio",            "Telefoonnummer",   "Mobiel",           "Stemrecht"
-]
+
+# Distinguish between dates and other field types
 CELL_STYLES = [
-    STYLE_DEFAULT,      STYLE_DEFAULT,      STYLE_DATE,         STYLE_DATE,
-    STYLE_DEFAULT,      STYLE_DEFAULT,      STYLE_DATE,         STYLE_DEFAULT,
-    STYLE_DEFAULT,      STYLE_DEFAULT,      STYLE_DEFAULT,      STYLE_DEFAULT,
-    STYLE_DEFAULT,      STYLE_DEFAULT,      STYLE_DEFAULT,      STYLE_DEFAULT,
-    STYLE_DEFAULT,      STYLE_DEFAULT,
+    STYLE_DEFAULT,
+    STYLE_DEFAULT, STYLE_DEFAULT, STYLE_DEFAULT, STYLE_DEFAULT,
+    STYLE_DEFAULT, STYLE_DEFAULT, STYLE_DEFAULT,
+    STYLE_DEFAULT, STYLE_DEFAULT,
+    STYLE_DEFAULT, STYLE_DEFAULT,
+    STYLE_DATE,    STYLE_DATE,
+    STYLE_DEFAULT, STYLE_DEFAULT, STYLE_DEFAULT, STYLE_DEFAULT,
+    STYLE_DEFAULT, STYLE_DEFAULT, STYLE_DEFAULT,
+    STYLE_DEFAULT, STYLE_DATE,
+    STYLE_DEFAULT, STYLE_DEFAULT,
+    STYLE_DEFAULT, STYLE_DEFAULT,
+    STYLE_DEFAULT
 ]
+
 # Every 1000 is 0.3 inch is 7.62 mm (full metal jacket)
 COLUMN_WIDTHS = [
-    2000,               3000,               3000,               3000,
-    6000,               3000,               3000,               6000,
-    3000,               5000,               8000,               5000,
-    5000,               4000,               4000,               2000,
-    4000,               4000,
+    2000,
+    3000, 2000, 2000, 5000,
+    5000, 2000, 2000,
+    2000, 3000,
+    3000, 3000,
+    3000, 3000,
+    2000, 2000, 2000, 2000,
+    5000, 3000, 3000,
+    2000, 3000,
+    1000, 1000,
+    1000, 1000,
+    1000
 ]
 
 # Read configuration-file
@@ -264,7 +283,7 @@ def read_xls(f):
         logger.critical("Last row in first column is not an integer. Please contact the ICT-team.")
         sys.exit(1)
     # Confirm first row matches with expectations
-    for header_expected, header in zip(EXPECTED_HEADERS, sheet.row_values(0)):
+    for header_expected, header in zip(HEADERS, sheet.row_values(0)):
         if header_expected != header:
             logger.critical("First row does not match expectations, possible format-change. Please contact the ICT-team if you are not completely sure what to do.")
             sys.exit(1)
@@ -342,10 +361,10 @@ def find_department(pc):
 def split_by_department(members):
     s = dict()
     for id in members.keys():
-        pc = parse_postcode(members[id][POSTCODE])
-        if (members[id][REGIO] == "BUITENLAND"):
-            d = "Buitenland"
+        if members[id][LAND].upper() != 'NEDERLAND':
+            d = 'Buitenland'
         else:
+            pc = parse_postcode(members[id][POSTCODE])
             d = find_department(pc)
         if not d in s:
             s[d] = dict()
