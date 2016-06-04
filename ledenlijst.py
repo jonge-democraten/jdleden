@@ -37,7 +37,6 @@ EMAIL = 10
 REGIO = 12
 STEMRECHT = 15
 # Aid to detect input-format changes
-EXPECTED_INPUT_COLUMNS = 16  # Columns 0 to 15 (incl.)
 EXPECTED_HEADERS = ['Lidnummer', 'Lidsoort', 'Lid sinds', 'Lid beeindigd', 'Volledige naam', 'Geslacht', 'Geboortedatum', 'Straat', 'Postcode', 'Plaats', 'Emailadres', 'Afdeling', 'Regio', 'Telefoonnummer', 'Mobiel', 'Stemrecht']
 # Extra columns not present in input-format
 VOORNAAM = 16
