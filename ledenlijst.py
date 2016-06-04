@@ -26,66 +26,52 @@ SCRIPTDIR = os.path.dirname(os.path.realpath(__file__))
 CHECKSUMFILE = os.path.join(SCRIPTDIR, "checksum.txt")
 
 # Give all important columns a name
-LIDNUMMER  = 0
-NAAM       = 4
-POSTCODE   = 8
+LIDNUMMER = 0
+#LIDSINDS = 2
+#LIDTOT = 3
+NAAM  = 4
+GEBDATUM = 6
+POSTCODE = 8
 WOONPLAATS = 9
-LAND       = 11
-STEMRECHT  = 17
-EMAIL      = 18
-GEBDATUM   = 22
-
-# The headers of the input file must exactly match the following definition
-HEADERS = [
-    u'Relatienummer',
-    u'Achternaam', u'Voorletters', u'Tussenvoegsel', u'Volledige naam',
-    u'Bez. straat', u'Adres 1: huisnummer', u'Toevoeging',
-    u'Postcode (correspondentie adres)', u'Woonplaats (correspondentie adres)',
-    u'Gemeente', u'Land (correspondentie adres)',
-    u'Geen lid sinds', u'Geen abonnement sinds',
-    u'Is lid D66', u'Stemrecht D66', u'Is lid JD', u'Stemrecht JD',
-    u'E-mail privé', u'Mobiele telefoon', u'Prive telefoonnummer',
-    u'Geslacht', u'Geboortedatum',
-    u'Ontbrekende gegevens', u'Vrij tekstveld test',
-    u'Aanhef formeel', u'Aanhef informeel',
-    u'Betaalmethodevoorkeur'
-]
+EMAIL = 10
+REGIO = 12
+STEMRECHT = 15
+# Aid to detect input-format changes
+EXPECTED_INPUT_COLUMNS = 16  # Columns 0 to 15 (incl.)
+EXPECTED_HEADERS = ['Lidnummer', 'Lidsoort', 'Lid sinds', 'Lid beeindigd', 'Volledige naam', 'Geslacht', 'Geboortedatum', 'Straat', 'Postcode', 'Plaats', 'Emailadres', 'Afdeling', 'Regio', 'Telefoonnummer', 'Mobiel', 'Stemrecht']
+# Extra columns not present in input-format
+VOORNAAM = 16
+ACHTERNAAM = 17
+# If amount or ordering of columns in input-format changes, several
+# code changes are needed:
+# - change numbers of extra columns
+# - change HEADER, CELL_STYLE and COLUMN_WIDTH
 
 # Excel-output formatting
 STYLE_DEFAULT = xlwt.Style.default_style
 STYLE_HEADER = xlwt.easyxf("font: bold on")
 STYLE_DATE = xlwt.easyxf(num_format_str="YYYY-MM-DD")
-
-# Distinguish between dates and other field types
-CELL_STYLES = [
-    STYLE_DEFAULT,
-    STYLE_DEFAULT, STYLE_DEFAULT, STYLE_DEFAULT, STYLE_DEFAULT,
-    STYLE_DEFAULT, STYLE_DEFAULT, STYLE_DEFAULT,
-    STYLE_DEFAULT, STYLE_DEFAULT,
-    STYLE_DEFAULT, STYLE_DEFAULT,
-    STYLE_DATE,    STYLE_DATE,
-    STYLE_DEFAULT, STYLE_DEFAULT, STYLE_DEFAULT, STYLE_DEFAULT,
-    STYLE_DEFAULT, STYLE_DEFAULT, STYLE_DEFAULT,
-    STYLE_DEFAULT, STYLE_DATE,
-    STYLE_DEFAULT, STYLE_DEFAULT,
-    STYLE_DEFAULT, STYLE_DEFAULT,
-    STYLE_DEFAULT
+HEADER = [
+    "Lidnummer",        "Lidsoort",         "Lid sinds",        "Lid beeindigd",
+    "Volledige naam",   "Geslacht",         "Geboortedatum",    "Straat",
+    "Postcode",         "Plaats",           "Emailadres",       "Afdeling",
+    "Regio",            "Telefoonnummer",   "Mobiel",           "Stemrecht",
+    "Voorna(a)m(en)",   "Achternaam",
 ]
-
+CELL_STYLE = [
+    STYLE_DEFAULT,      STYLE_DEFAULT,      STYLE_DATE,         STYLE_DATE,
+    STYLE_DEFAULT,      STYLE_DEFAULT,      STYLE_DATE,         STYLE_DEFAULT,
+    STYLE_DEFAULT,      STYLE_DEFAULT,      STYLE_DEFAULT,      STYLE_DEFAULT,
+    STYLE_DEFAULT,      STYLE_DEFAULT,      STYLE_DEFAULT,      STYLE_DEFAULT,
+    STYLE_DEFAULT,      STYLE_DEFAULT,
+]
 # Every 1000 is 0.3 inch is 7.62 mm (full metal jacket)
-COLUMN_WIDTHS = [
-    2000,
-    3000, 2000, 2000, 5000,
-    5000, 2000, 2000,
-    2000, 3000,
-    3000, 3000,
-    3000, 3000,
-    2000, 2000, 2000, 2000,
-    5000, 3000, 3000,
-    2000, 3000,
-    1000, 1000,
-    1000, 1000,
-    1000
+COLUMN_WIDTH = [
+    2000,               3000,               3000,               3000,
+    6000,               3000,               3000,               6000,
+    3000,               5000,               8000,               5000,
+    5000,               4000,               4000,               2000,
+    4000,               4000,
 ]
 
 # Read configuration-file
@@ -172,7 +158,7 @@ def update_changed_members(old, changed, is_dryrun):
     moved = {}
     for id in changed.keys():
         if not is_dryrun:
-            doldap_modify(changed[id][LIDNUMMER], changed[id][NAAM], changed[id][EMAIL], find_department(parse_postcode(changed[id][POSTCODE])))
+            doldap_modify(changed[id][LIDNUMMER], format_name(changed[id][NAAM], changed[id][VOORNAAM], changed[id][ACHTERNAAM]), changed[id][EMAIL], find_department(parse_postcode(changed[id][POSTCODE])))
         if (changed[id][POSTCODE] != old[id][POSTCODE]):  # Only resubscribe if department actually changes
             newdept = find_department(parse_postcode(changed[id][POSTCODE]))
             olddept = find_department(parse_postcode(old[id][POSTCODE]))
@@ -184,8 +170,9 @@ def update_changed_members(old, changed, is_dryrun):
 def add_members_to_ldap(plus_split, is_dryrun):
     for d in plus_split.keys():
         for id in plus_split[d].keys():
+            name = format_name(plus_split[d][id][NAAM], plus_split[d][id][VOORNAAM], plus_split[d][id][ACHTERNAAM])
             if not is_dryrun:
-                doldap_add(plus_split[d][id][LIDNUMMER], plus_split[d][id][NAAM], plus_split[d][id][EMAIL], d)
+                doldap_add(plus_split[d][id][LIDNUMMER], name, plus_split[d][id][EMAIL], d)
 
 
 def remove_members_from_ldap(members, is_dryrun):
@@ -283,7 +270,7 @@ def read_xls(f):
         logger.critical("Last row in first column is not an integer. Please contact the ICT-team.")
         sys.exit(1)
     # Confirm first row matches with expectations
-    for header_expected, header in zip(HEADERS, sheet.row_values(0)):
+    for header_expected, header in zip(EXPECTED_HEADERS, sheet.row_values(0)):
         if header_expected != header:
             logger.critical("First row does not match expectations, possible format-change. Please contact the ICT-team if you are not completely sure what to do.")
             sys.exit(1)
@@ -293,11 +280,24 @@ def read_xls(f):
     # Store all members in dict by member-number
     for i in range(1,sheet.nrows):
         row = sheet.row(i)
+        if len(row) != EXPECTED_INPUT_COLUMNS:
+            # If this happens, consult comment near constants
+            logger.critical("Wrong amount of columns in input-data, "\
+                    "got %d, expected %d." % (len(row), EXPECTED_INPUT_COLUMNS))
+            sys.exit(1)
         leden[int(row[LIDNUMMER].value)] = [c.value for c in row]
     # Sanitise data
     for id in leden.keys():
         # Convert member id to int
         leden[id][LIDNUMMER] = int(leden[id][LIDNUMMER])
+        # Split firstname and lastname
+        try:
+            lastname, firstname = leden[id][NAAM].split(', ', 1)
+        except ValueError:
+            # logger.warning("[%d] geen voor- of achternaam" % id) # these entries do not exist in todays input so we disable to warning that floods the logs
+            leden[id] += ['', '']  # Columns need to exist anyway
+        else:
+            leden[id] += [firstname, lastname]  # Append to existing list
         # Convert voting right to boolean
         if leden[id][STEMRECHT] == "Ja":
             leden[id][STEMRECHT] = True
@@ -312,15 +312,15 @@ def write_xls(f, members):
     book = xlwt.Workbook()
     sheet = book.add_sheet("Leden %s" % NOWHUMAN.split(" ")[0])
     # Column widths
-    for i in range(len(COLUMN_WIDTHS)):
-        sheet.col(i).width = COLUMN_WIDTHS[i]
+    for i in range(len(COLUMN_WIDTH)):
+        sheet.col(i).width = COLUMN_WIDTH[i]
     # First row of spreadsheet
-    for i in range(len(HEADERS)):
-        sheet.write(0, i, HEADERS[i], STYLE_HEADER)
+    for i in range(len(HEADER)):
+        sheet.write(0, i, HEADER[i], STYLE_HEADER)
     row = 1  # Row 0 is header
     for id in members.keys():
         for c in range(len(members[id])):
-            sheet.write(row, c, members[id][c], CELL_STYLES[c])
+            sheet.write(row, c, members[id][c], CELL_STYLE[c])
         row += 1
     return book.save(f)
 
@@ -361,10 +361,10 @@ def find_department(pc):
 def split_by_department(members):
     s = dict()
     for id in members.keys():
-        if members[id][LAND].upper() != 'NEDERLAND':
-            d = 'Buitenland'
+        pc = parse_postcode(members[id][POSTCODE])
+        if (members[id][REGIO] == "BUITENLAND"):
+            d = "Buitenland"
         else:
-            pc = parse_postcode(members[id][POSTCODE])
             d = find_department(pc)
         if not d in s:
             s[d] = dict()
@@ -395,6 +395,19 @@ def excel_to_date(xldate):
     datetuple = xlrd.xldate_as_tuple(xldate, 0)
     date = datetime.date(*datetuple[:3])
     return date
+
+
+def format_name(fullname, firstname, lastname):
+    # Try to format a sensible name even with incomplete data
+    if len(firstname) and len(lastname):
+        # Complete data, return parsed name
+        return "%s %s" % (firstname, lastname)
+    elif len(fullname):
+        # Incomplete data, return unparsed name
+        return fullname
+    else:
+        # No data at all, return error
+        return "ONBEKENDE_NAAM"
 
 
 def doldap_remove(id):
