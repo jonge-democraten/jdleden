@@ -38,9 +38,6 @@ REGIO = 12
 STEMRECHT = 15
 # Aid to detect input-format changes
 EXPECTED_HEADERS = ['Lidnummer', 'Lidsoort', 'Lid sinds', 'Lid beeindigd', 'Volledige naam', 'Geslacht', 'Geboortedatum', 'Straat', 'Postcode', 'Plaats', 'Emailadres', 'Afdeling', 'Regio', 'Telefoonnummer', 'Mobiel', 'Stemrecht']
-# Extra columns not present in input-format
-VOORNAAM = 16
-ACHTERNAAM = 17
 # If amount or ordering of columns in input-format changes, several
 # code changes are needed:
 # - change numbers of extra columns
@@ -54,8 +51,7 @@ HEADERS = [
     "Lidnummer",        "Lidsoort",         "Lid sinds",        "Lid beeindigd",
     "Volledige naam",   "Geslacht",         "Geboortedatum",    "Straat",
     "Postcode",         "Plaats",           "Emailadres",       "Afdeling",
-    "Regio",            "Telefoonnummer",   "Mobiel",           "Stemrecht",
-    "Voorna(a)m(en)",   "Achternaam",
+    "Regio",            "Telefoonnummer",   "Mobiel",           "Stemrecht"
 ]
 CELL_STYLES = [
     STYLE_DEFAULT,      STYLE_DEFAULT,      STYLE_DATE,         STYLE_DATE,
@@ -157,7 +153,7 @@ def update_changed_members(old, changed, is_dryrun):
     moved = {}
     for id in changed.keys():
         if not is_dryrun:
-            doldap_modify(changed[id][LIDNUMMER], format_name(changed[id][NAAM], changed[id][VOORNAAM], changed[id][ACHTERNAAM]), changed[id][EMAIL], find_department(parse_postcode(changed[id][POSTCODE])))
+            doldap_modify(changed[id][LIDNUMMER], changed[id][NAAM], changed[id][EMAIL], find_department(parse_postcode(changed[id][POSTCODE])))
         if (changed[id][POSTCODE] != old[id][POSTCODE]):  # Only resubscribe if department actually changes
             newdept = find_department(parse_postcode(changed[id][POSTCODE]))
             olddept = find_department(parse_postcode(old[id][POSTCODE]))
@@ -169,9 +165,8 @@ def update_changed_members(old, changed, is_dryrun):
 def add_members_to_ldap(plus_split, is_dryrun):
     for d in plus_split.keys():
         for id in plus_split[d].keys():
-            name = format_name(plus_split[d][id][NAAM], plus_split[d][id][VOORNAAM], plus_split[d][id][ACHTERNAAM])
             if not is_dryrun:
-                doldap_add(plus_split[d][id][LIDNUMMER], name, plus_split[d][id][EMAIL], d)
+                doldap_add(plus_split[d][id][LIDNUMMER], plus_split[d][id][NAAM], plus_split[d][id][EMAIL], d)
 
 
 def remove_members_from_ldap(members, is_dryrun):
@@ -284,14 +279,6 @@ def read_xls(f):
     for id in leden.keys():
         # Convert member id to int
         leden[id][LIDNUMMER] = int(leden[id][LIDNUMMER])
-        # Split firstname and lastname
-        try:
-            lastname, firstname = leden[id][NAAM].split(', ', 1)
-        except ValueError:
-            # logger.warning("[%d] geen voor- of achternaam" % id) # these entries do not exist in todays input so we disable to warning that floods the logs
-            leden[id] += ['', '']  # Columns need to exist anyway
-        else:
-            leden[id] += [firstname, lastname]  # Append to existing list
         # Convert voting right to boolean
         if leden[id][STEMRECHT] == "Ja":
             leden[id][STEMRECHT] = True
@@ -389,19 +376,6 @@ def excel_to_date(xldate):
     datetuple = xlrd.xldate_as_tuple(xldate, 0)
     date = datetime.date(*datetuple[:3])
     return date
-
-
-def format_name(fullname, firstname, lastname):
-    # Try to format a sensible name even with incomplete data
-    if len(firstname) and len(lastname):
-        # Complete data, return parsed name
-        return "%s %s" % (firstname, lastname)
-    elif len(fullname):
-        # Incomplete data, return unparsed name
-        return fullname
-    else:
-        # No data at all, return error
-        return "ONBEKENDE_NAAM"
 
 
 def doldap_remove(id):
