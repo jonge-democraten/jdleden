@@ -150,7 +150,7 @@ def main():
         subscribe_members_to_maillist(current_members_per_dep, options.dryrun)
         logger.info("Subscribing complete.")
         # Unsubscribe moved members from old department and subscribe to new department
-        logger.info("Moving members " + str(len(moved)) + " to new departments...")
+        logger.info("Moving " + str(len(moved)) + " members to new departments...")
         moved_split = split_by_department(moved)
         move_members_to_new_department(old, moved_split, options.dryrun)
         write_department_excels(moved, "verhuisd")
