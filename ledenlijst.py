@@ -48,7 +48,8 @@ HEADERS = [
     u'Geslacht', u'Geboortedatum',
     u'Ontbrekende gegevens', u'Vrij tekstveld test',
     u'Aanhef formeel', u'Aanhef informeel',
-    u'Betaalmethodevoorkeur'
+    u'Betaalmethodevoorkeur',
+    u'Overleden'
 ]
 
 # Excel-output formatting
@@ -69,7 +70,7 @@ CELL_STYLES = [
     STYLE_DEFAULT, STYLE_DATE,
     STYLE_DEFAULT, STYLE_DEFAULT,
     STYLE_DEFAULT, STYLE_DEFAULT,
-    STYLE_DEFAULT
+    STYLE_DEFAULT, STYLE_DEFAULT
 ]
 
 # Every 1000 is 0.3 inch is 7.62 mm (full metal jacket)
