@@ -110,7 +110,8 @@ class JDldap(object):
             raise
 
     def disconnect(self):
-        self.ldap_connection.unbind_s()
+        if self.ldap_connection:
+            self.ldap_connection.unbind_s()
 
     def doldap_remove(self, id):
         self.check_connection()
