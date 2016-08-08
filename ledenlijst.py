@@ -17,6 +17,8 @@ import xlwt
 import ldap
 import ldap.modlist as modlist
 
+from jdledenlogger import logger
+
 NOW = time.strftime("%s")          # Epoch-time
 NOWHUMAN = time.strftime("%F %T")  # Human-readable time
 # Trick to establish the directory of the actual script, even when called
@@ -94,7 +96,64 @@ config = configparser.RawConfigParser()
 config.read(os.path.join(SCRIPTDIR, "ledenlijst.cfg"))
 ldapcfg = dict(config.items("ldapcfg"))
 
-from jdledenlogger import logger
+
+class JDldap(object):
+    def __init__(self):
+        self.ldap_connection = None
+
+    def connect(self):
+        self.ldap_connection = ldap.initialize(ldapcfg["name"])
+        try:
+            self.ldap_connection.simple_bind_s(ldapcfg["dn"], ldapcfg["password"])
+        except ldap.LDAPError as e:
+            logger.critical(str(e))
+            raise
+
+    def disconnect(self):
+        self.ldap_connection.unbind_s()
+
+    def doldap_remove(self, id):
+        self.check_connection()
+        dn_to_delete = "cn=" + str(int(id)) + ",ou=users,dc=jd,dc=nl"
+        try:
+            self.ldap_connection.delete_s(dn_to_delete)
+        except ldap.LDAPError as e:
+            logger.warning(str(e) + " - Could not remove - " + str(int(id)))
+            # raise # this can happen because the database is transactional but the LDAP not yet (script can come here twice)
+
+    def doldap_add(self, lidnummer, naam, mail, afdeling):
+        self.check_connection()
+        dn_to_add = "cn=" + str(int(lidnummer)) + ",ou=users,dc=jd,dc=nl"
+        attrs = {}
+        attrs['objectclass'] = ['inetOrgPerson'.encode('utf8')]
+        attrs['sn'] = naam.encode('utf8')
+        attrs['mail'] = mail.encode('utf8')
+        attrs['ou'] = afdeling.encode('utf8')
+
+        ldif = modlist.addModlist(attrs)
+        try:
+            self.ldap_connection.add_s(dn_to_add, ldif)
+        except ldap.LDAPError as e:
+            logger.warning(str(e) + " - Could not add - " + str(int(lidnummer)))
+            # raise # this can happen because the database is transactional but the LDAP not yet (script can come here twice)
+
+    def doldap_modify(self,lidnummer, naam, mail, afdeling):
+        self.check_connection()
+        dn_to_mod = "cn=" + str(int(lidnummer)) + ",ou=users,dc=jd,dc=nl"
+        attrs = [(ldap.MOD_REPLACE, "sn", naam.encode('utf8')), (ldap.MOD_REPLACE, "mail", mail.encode('utf8')),
+                 (ldap.MOD_REPLACE, "ou", afdeling.encode('utf8'))]
+        try:
+            self.ldap_connection.modify_s(dn_to_mod, attrs)
+        except ldap.LDAPError as e:
+            logger.warning(str(e) + " - Could not modify - " + str(int(lidnummer)))
+            raise
+
+    def check_connection(self):
+        if not self.ldap_connection:
+            raise RuntimeError('No connection with LDAP!')
+
+
+jdldap = JDldap()
 
 
 def main():
@@ -125,6 +184,8 @@ def main():
 
     # Don't run this block in Excel-only-mode
     if not options.only_excel:
+        if not options.dryrun:
+            jdldap.connect()
         logger.info("Reading %s ..." % oldfile)
         old = read_xls(oldfile)
         logger.info("Reading complete")
@@ -167,13 +228,14 @@ def main():
         logger.info("SUCCESS!")
         if options.dryrun:
             logger.warning("Dry-run. No actual LDAP and Hemres changes!")
+        jdldap.disconnect()
 
 
 def update_changed_members(old, changed, is_dryrun):
     moved = {}
     for id in changed.keys():
         if not is_dryrun:
-            doldap_modify(changed[id][LIDNUMMER], changed[id][NAAM], changed[id][EMAIL], find_department(parse_postcode(changed[id][POSTCODE])))
+            jdldap.doldap_modify(changed[id][LIDNUMMER], changed[id][NAAM], changed[id][EMAIL], find_department(parse_postcode(changed[id][POSTCODE])))
         if (changed[id][POSTCODE] != old[id][POSTCODE]):  # Only resubscribe if department actually changes
             newdept = find_department(parse_postcode(changed[id][POSTCODE]))
             olddept = find_department(parse_postcode(old[id][POSTCODE]))
@@ -186,13 +248,13 @@ def add_members_to_ldap(plus_split, is_dryrun):
     for d in plus_split.keys():
         for id in plus_split[d].keys():
             if not is_dryrun:
-                doldap_add(plus_split[d][id][LIDNUMMER], plus_split[d][id][NAAM], plus_split[d][id][EMAIL], d)
+                jdldap.doldap_add(plus_split[d][id][LIDNUMMER], plus_split[d][id][NAAM], plus_split[d][id][EMAIL], d)
 
 
 def remove_members_from_ldap(members, is_dryrun):
     for id in members:
         if not is_dryrun:
-            doldap_remove(id)
+            jdldap.doldap_remove(id)
 
 
 def subscribe_members_to_maillist(plus_split, is_dryrun):
@@ -396,67 +458,6 @@ def excel_to_date(xldate):
     datetuple = xlrd.xldate_as_tuple(xldate, 0)
     date = datetime.date(*datetuple[:3])
     return date
-
-
-def doldap_remove(id):
-    l = ldap.initialize(ldapcfg["name"])
-    try:
-        l.simple_bind_s(ldapcfg["dn"], ldapcfg["password"])
-    except ldap.LDAPError as e:
-        logger.critical(str(e))
-        raise
-
-    dn_to_delete = "cn="+str(int(id))+",ou=users,dc=jd,dc=nl"
-    try:
-        l.delete_s(dn_to_delete)
-    except ldap.LDAPError as e:
-        logger.warning(str(e) + " - Could not remove - "+str(int(id)))
-        #raise # this can happen because the database is transactional but the LDAP not yet (script can come here twice)
-    l.unbind_s()
-
-
-def doldap_add(lidnummer, naam, mail, afdeling):
-    l = ldap.initialize(ldapcfg["name"])
-    try:
-        l.simple_bind_s(ldapcfg["dn"], ldapcfg["password"])
-    except ldap.LDAPError as e:
-        logger.critical(str(e))
-        #raise # this can happen because the database is transactional but the LDAP not yet (script can come here twice)
-
-    dn_to_add = "cn="+str(int(lidnummer))+",ou=users,dc=jd,dc=nl"
-    attrs = {}
-    attrs['objectclass'] = ['inetOrgPerson'.encode('utf8')]
-    attrs['sn'] = naam.encode('utf8')
-    attrs['mail'] = mail.encode('utf8')
-    attrs['ou'] = afdeling.encode('utf8')
-
-    ldif = modlist.addModlist(attrs)
-    try:
-        l.add_s(dn_to_add, ldif)
-    except ldap.LDAPError as e:
-        logger.warning(str(e) + " - Could not add - "+str(int(lidnummer)))
-        #raise # this can happen because the database is transactional but the LDAP not yet (script can come here twice)
-    l.unbind_s()
-
-
-def doldap_modify(lidnummer, naam, mail, afdeling):
-    l = ldap.initialize(ldapcfg["name"])
-    try:
-        l.simple_bind_s(ldapcfg["dn"], ldapcfg["password"])
-    except ldap.LDAPError as e:
-        logger.critical(str(e))
-        raise
-
-    dn_to_mod = "cn="+str(int(lidnummer))+",ou=users,dc=jd,dc=nl"
-
-    attrs = [(ldap.MOD_REPLACE, "sn", naam.encode('utf8')), (ldap.MOD_REPLACE, "mail", mail.encode('utf8')), (ldap.MOD_REPLACE, "ou", afdeling.encode('utf8'))]
-
-    try:
-        l.modify_s(dn_to_mod, attrs)
-    except ldap.LDAPError as e:
-        logger.warning(str(e) + " - Could not modify - "+str(int(lidnummer)))
-        raise
-    l.unbind_s()
 
 
 if __name__ == "__main__":
