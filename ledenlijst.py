@@ -229,7 +229,8 @@ def main():
         logger.info("SUCCESS!")
         if options.dryrun:
             logger.warning("Dry-run. No actual LDAP and Hemres changes!")
-        jdldap.disconnect()
+        if not options.dryrun:
+            jdldap.disconnect()
 
 
 def update_changed_members(old, changed, is_dryrun):
