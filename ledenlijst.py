@@ -351,6 +351,7 @@ def read_xls(f):
     for header_expected, header in zip(HEADERS, sheet.row_values(0)):
         if header_expected != header:
             logger.critical("First row does not match expectations, possible format-change. Please contact the ICT-team if you are not completely sure what to do.")
+            logger.critical("header: " + header + ", expected: " + header_expected)
             sys.exit(1)
     if sheet.nrows not in range(4000,7000):
         logger.critical("Total number of rows very different from hardcoded safeguard. Please contact the ICT-team.")
