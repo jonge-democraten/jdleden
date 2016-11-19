@@ -160,7 +160,8 @@ jdldap = JDldap()
 
 
 def update(oldfile, newfile, dryrun=False):
-    check_oldfile(oldfile)
+    if not check_oldfile(oldfile, CHECKSUMFILE):
+        sys.exit(1)
     if dryrun:
         logger.warning("Dry-run. No LDAP and newsletter changes.")
 
@@ -271,12 +272,12 @@ def move_members_to_new_department(old, moved_split, is_dryrun):
                 janeus_subscribe.Command.subscribe(member_id, newlist)
 
 
-def check_oldfile(oldfile):
+def check_oldfile(oldfile, checksumfile):
     with open(oldfile, "rb") as f:
         hash = hashlib.sha512(f.read())
         oldsha = hash.hexdigest()
     try:
-        f = open(CHECKSUMFILE, "r")
+        f = open(checksumfile, "r")
     except IOError as e:
         # If no checksum.txt exists, pretend it was correct
         if e.errno == errno.ENOENT:
@@ -289,17 +290,18 @@ def check_oldfile(oldfile):
 
     if oldsha == storedsha:
         logger.info("Input files are sane (checksums match)")
+        return True
     else:
         logger.critical("Wrong old.xls (according to checksum). Please contact the ICT-team if you are not completely sure what to do.")
-        sys.exit(1)
+        return False
 
 
-def create_new_checksum(newfile):
+def create_new_checksum(newfile, checksumfile):
     logger.info("Creating new checksum.txt...")
     with open(newfile, "rb") as f:
         newsha = hashlib.sha512(f.read()).hexdigest()
-    with open(CHECKSUMFILE, "w") as checksumfile:  # Write sha512sum-compatible checksum-file
-        checksumfile.write("%s  %s\n" % (newsha, newfile))
+    with open(checksumfile, "w") as outfile:  # Write sha512sum-compatible checksum-file
+        outfile.write("%s  %s\n" % (newsha, newfile))
 
 
 def create_department_excels_from_file(newfile):
