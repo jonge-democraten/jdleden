@@ -18,6 +18,8 @@ INSTALLED_APPS = [
     'jdleden',
 ]
 
+MIDDLEWARE_CLASSES = []
+
 TEMPLATES = [{
     'OPTIONS': {
         'builtins': [
