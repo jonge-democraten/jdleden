@@ -2,12 +2,12 @@
 import logging
 from optparse import OptionParser
 
-import jdleden.ledenlijst
-from hemresadapter import HemresAdapter
-from jdledenlogger import logger
+from jdleden import ledenlijst
+from jdleden import afdelingen
+from jdleden import afdelingenoud
 
-import jdleden.afdelingenoud
-import jdleden.afdelingen
+logger = logging.getLogger(__name__)
+
 
 def main():
     # Define command-line options
