@@ -98,7 +98,4 @@ LOGGING = {
     },
 }
 
-
-# TINYMCE_SETUP_JS= ''
-# JQUERY_UI_FILENAME = ''
 PACKAGE_NAME_FILEBROWSER = 'filebrowser'
