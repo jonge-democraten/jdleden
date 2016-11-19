@@ -26,14 +26,17 @@ $ source env/bin/activate
 
 Update members,
 ```
-
 $ python manage.py updateleden old_list.xlsx new_list.xlsx
 ```
 
 Update after change in departments,
 ```
-$ source env/bin/activate
-$ python manage.py afdelingrondschuif membesr_list.xlsx
+$ python manage.py afdelingrondschuif members_list.xlsx
+```
+
+Create members per department excel output,
+```
+$ python manage.py createdepartmentexcels members_list.xlsx
 ```
 
 See https://trac.jongedemocraten.nl/wiki/UpdateLedenlijst

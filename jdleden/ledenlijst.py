@@ -302,9 +302,9 @@ def create_new_checksum(newfile):
         checksumfile.write("%s  %s\n" % (newsha, newfile))
 
 
-def create_department_excels_from_file(newfile, directory_name):
+def create_department_excels_from_file(newfile):
     new = read_xls(newfile)
-    write_department_excels(new, directory_name)
+    write_department_excels(new, "uitvoer")
 
 
 def write_department_excels(new, directory_name):
