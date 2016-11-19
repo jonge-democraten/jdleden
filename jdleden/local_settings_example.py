@@ -1,7 +1,7 @@
 
-LDAP_NAME = ''
+LDAP_NAME = 'ldap://'
 LDAP_PASSWORD = ''
-LDAP_DN = ''
+LDAP_DN = 'cn=writeuser,ou=sysUsers,dc=jd,dc=nl'
 
 SECRET_KEY = ''
 
