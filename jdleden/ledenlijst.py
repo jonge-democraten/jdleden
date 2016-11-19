@@ -1,6 +1,7 @@
-#!/usr/bin/env python3.4
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
+import logging
 import sys
 import os
 import errno
@@ -9,15 +10,17 @@ import datetime
 import hashlib
 import configparser
 from optparse import OptionParser
-from afdelingen import AFDELINGEN
-from hemresadapter import HemresAdapter
 
 import xlrd
 import xlwt
 import ldap
 import ldap.modlist as modlist
 
-from jdledenlogger import logger
+from jdleden.afdelingen import AFDELINGEN
+from jdleden.hemresadapter import HemresAdapter
+from jdleden import settings
+
+logger = logging.getLogger(__name__)
 
 NOW = time.strftime("%s")          # Epoch-time
 NOWHUMAN = time.strftime("%F %T")  # Human-readable time
@@ -91,20 +94,15 @@ COLUMN_WIDTHS = [
     1000, 1000
 ]
 
-# Read configuration-file
-config = configparser.RawConfigParser()
-config.read(os.path.join(SCRIPTDIR, "ledenlijst.cfg"))
-ldapcfg = dict(config.items("ldapcfg"))
-
 
 class JDldap(object):
     def __init__(self):
         self.ldap_connection = None
 
     def connect(self):
-        self.ldap_connection = ldap.initialize(ldapcfg["name"])
+        self.ldap_connection = ldap.initialize(settings.LDAP_NAME)
         try:
-            self.ldap_connection.simple_bind_s(ldapcfg["dn"], ldapcfg["password"])
+            self.ldap_connection.simple_bind_s(settings.LDAP_DN, settings.LDAP_PASSWORD)
         except ldap.LDAPError as e:
             logger.critical(str(e))
             raise
@@ -157,22 +155,14 @@ class JDldap(object):
 jdldap = JDldap()
 
 
-def main():
+def update(newfile, oldfile, options):
+    print(options['dryrun'])
     # Define command-line options
-    usage = """\
-    %prog [options] arguments
-    in regular mode, arguments is 2 files: old.xls new.xls
-    in Excel-only-mode, arguments is 1 file: new.xls"""
-    parser = OptionParser(usage)
-    parser.add_option("-n", "--dryrun", action="store_true", dest="dryrun", help="don't execute any SQL or LDAP")
-    parser.add_option("-x", "--excel", action="store_true", dest="only_excel", help="only generate Excel-files per department")
-    # Read options and check sanity
-    options, args = parser.parse_args()
-    log_script_arguments()
+    # newfile, oldfile = parse_options(parser, options, args)
 
-    newfile, oldfile = parse_options(parser, options, args)
+    dryrun = options['dryrun']
 
-    if options.dryrun:
+    if dryrun:
         logger.warning("Dry-run. No LDAP and newsletter changes.")
 
     logger.info("Reading %s ..." % newfile)
@@ -185,7 +175,7 @@ def main():
 
     # Don't run this block in Excel-only-mode
     if not options.only_excel:
-        if not options.dryrun:
+        if not dryrun:
             jdldap.connect()
         logger.info("Reading %s ..." % oldfile)
         old = read_xls(oldfile)
@@ -198,24 +188,24 @@ def main():
 
         # Remove old members
         logger.info("Removing " + str(len(former_members)) + " members...")
-        remove_members_from_ldap(former_members, options.dryrun)
+        remove_members_from_ldap(former_members, dryrun)
         logger.info("Removing complete.")
         # Update changed members
         logger.info("Updating " + str(len(changed_members)) + " changed members...")
-        moved = update_changed_members(old, changed_members, options.dryrun)
+        moved = update_changed_members(old, changed_members, dryrun)
         logger.info("Changes complete.")
         # Add new members
         logger.info("Adding " + str(len(new_members)) + " new members...")
-        add_members_to_ldap(current_members_per_dep, options.dryrun)
+        add_members_to_ldap(current_members_per_dep, dryrun)
         logger.info("Adding complete.")
         # Add the new members to their department
         logger.info("Subscribing " + str(len(new_members)) + " new members to lists...")
-        subscribe_members_to_maillist(current_members_per_dep, options.dryrun)
+        subscribe_members_to_maillist(current_members_per_dep, dryrun)
         logger.info("Subscribing complete.")
         # Unsubscribe moved members from old department and subscribe to new department
         logger.info("Moving " + str(len(moved)) + " members to new departments...")
         moved_split = split_by_department(moved)
-        move_members_to_new_department(old, moved_split, options.dryrun)
+        move_members_to_new_department(old, moved_split, dryrun)
         write_department_excels(moved, "verhuisd")
         logger.info("Moving complete.")
         logger.info("=== Summary === ")
@@ -224,12 +214,12 @@ def main():
         logger.info("Updated: " + str(len(changed_members)))
         logger.info("Changed department: " + str(len(moved)))
         logger.info("==========")
-        if not options.dryrun:
+        if not dryrun:
             create_new_checksum(newfile)
         logger.info("SUCCESS!")
-        if options.dryrun:
+        if dryrun:
             logger.warning("Dry-run. No actual LDAP and Hemres changes!")
-        if not options.dryrun:
+        if not dryrun:
             jdldap.disconnect()
 
 
@@ -436,13 +426,6 @@ def split_by_department(members):
             s[d] = dict()
         s[d][id] = members[id]
     return s
-
-
-def log_script_arguments():
-    commandArguments = "Start script with command: "
-    for arg in sys.argv:
-        commandArguments += arg + " "
-    logger.info(commandArguments)
 
 
 def trymkdir(dir, perm=0o700):

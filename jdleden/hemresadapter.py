@@ -5,8 +5,9 @@
 import os
 import subprocess
 import configparser
+import logging
 
-from jdledenlogger import logger
+logger = logging.getLogger(__name__)
 
 
 class HemresAdapter(object):

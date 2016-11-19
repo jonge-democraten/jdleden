@@ -1,13 +1,13 @@
-#!/usr/bin/env python3.4
-
+#!/usr/bin/env python3
+import logging
 from optparse import OptionParser
 
-import ledenlijst
+import jdleden.ledenlijst
 from hemresadapter import HemresAdapter
 from jdledenlogger import logger
 
-import afdelingenoud
-import afdelingen
+import jdleden.afdelingenoud
+import jdleden.afdelingen
 
 def main():
     # Define command-line options

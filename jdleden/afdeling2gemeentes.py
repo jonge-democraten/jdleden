@@ -12,7 +12,7 @@ import MySQLdb
 # the script-directory, not the current directory.
 SCRIPTDIR = os.path.dirname(os.path.realpath(__file__))
 
-from afdelingen import AFDELINGEN
+from jdleden.afdelingen import AFDELINGEN
 
 # Read configuration-file
 config = ConfigParser.RawConfigParser()
@@ -44,7 +44,7 @@ if __name__ == "__main__":
             for g in c.fetchall():
                 #if int(g[2]) >= r[0] and int(g[3]) <= r[1]:
                 gemeentes[d].append(g)
-    print "Betwiste gemeentes:"
+    print("Betwiste gemeentes:")
     for afd in gemeentes:
         output[afd] = []
         for gem in gemeentes[afd]:
@@ -58,5 +58,5 @@ if __name__ == "__main__":
                 output[afd].append(gem[0])
     f = open('afdelingen.json','w')
     f.write(json.dumps(output))
-    print 'afdeling.json written.'
+    print('afdeling.json written.')
 
