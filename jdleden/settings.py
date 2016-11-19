@@ -18,16 +18,6 @@ INSTALLED_APPS = [
     'jdleden',
 ]
 
-MIDDLEWARE_CLASSES = []
-
-TEMPLATES = [{
-    'OPTIONS': {
-        'builtins': [
-            'mezzanine.template.loader_tags',  # dummy to remove Mezzanine warning
-        ]
-    },
-}]
-
 from jdleden.local_settings import *
 
 LOG_DIR = BASE_DIR
@@ -102,4 +92,38 @@ LOGGING = {
     },
 }
 
+TEMPLATES = [{
+    'OPTIONS': {
+        'builtins': [
+            'mezzanine.template.loader_tags',  # dummy to remove Mezzanine warning
+        ]
+    },
+}]
+
+MIDDLEWARE_CLASSES = (
+    "django.contrib.sessions.middleware.SessionMiddleware",
+    "django.middleware.locale.LocaleMiddleware",
+    "django.contrib.auth.middleware.AuthenticationMiddleware",
+    "django.middleware.common.CommonMiddleware",
+    "django.middleware.csrf.CsrfViewMiddleware",
+    "django.contrib.messages.middleware.MessageMiddleware",
+)
+
+ALLOWED_HOSTS = ['example.com']
+USE_I18N = False
+USE_TZ = False
+TIME_ZONE = 'Europe/Amsterdam'
+
+#############
+# MEZZANINE #
+#############
+
+SITE_ID = 1
 PACKAGE_NAME_FILEBROWSER = 'filebrowser'
+
+try:
+    from mezzanine.utils.conf import set_dynamic_settings
+except ImportError:
+    pass
+else:
+    set_dynamic_settings(globals())

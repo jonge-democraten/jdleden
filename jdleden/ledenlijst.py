@@ -31,7 +31,7 @@ CHECKSUMFILE = os.path.join(SCRIPTDIR, "checksum.txt")
 
 # Give all important columns a name
 LIDNUMMER  = 0
-NAAM       = 4
+NAAM       = 1
 POSTCODE   = 8
 WOONPLAATS = 9
 LAND       = 11
@@ -42,18 +42,20 @@ GEBDATUM   = 22
 # The headers of the input file must exactly match the following definition
 HEADERS = [
     u'Relatienummer',
-    u'Achternaam', u'Voorletters', u'Tussenvoegsel', u'Volledige naam',
-    u'Bez. straat', u'Adres 1: huisnummer', u'Toevoeging',
-    u'Postcode (correspondentie adres)', u'Woonplaats (correspondentie adres)',
-    u'Gemeente', u'Land (correspondentie adres)',
+    u'Volledige naam',
+    u'Adres: Achternaam', u'Adres: Tussenvoegsel', u'Adres: Voorletters',
+    u'Adres: Straatnaam', u'Adres: Huisnummer', u'Adres: Hnr Toevoeging',
+    u'Adres: Postcode', u'Adres: Woonplaats',
+    u'Gemeente', u'Adres: Land',
     u'Geen lid sinds', u'Geen abonnement sinds',
     u'Is lid D66', u'Stemrecht D66', u'Is lid JD', u'Stemrecht JD',
-    u'E-mail privé', u'Mobiele telefoon', u'Prive telefoonnummer',
-    u'Geslacht', u'Geboortedatum',
+    u'E-mail privé', u'Telefoon: Mobiel', u'Telefoon: Prive',
+    u'Geslacht',
+    u'Geboortedatum',
     u'Ontbrekende gegevens', u'Vrij tekstveld test',
     u'Aanhef formeel', u'Aanhef informeel',
-    u'Betaalmethodevoorkeur',
-    u'Overleden'
+    u'Betaalmethodevoorkeur', u'Gewijzigd op',
+    u'Contact: Bulk-e-mail niet toestaan', u'Overleden'
 ]
 
 # Excel-output formatting
@@ -64,14 +66,17 @@ STYLE_DATE = xlwt.easyxf(num_format_str="YYYY-MM-DD")
 # Distinguish between dates and other field types
 CELL_STYLES = [
     STYLE_DEFAULT,
-    STYLE_DEFAULT, STYLE_DEFAULT, STYLE_DEFAULT, STYLE_DEFAULT,
+    STYLE_DEFAULT,
+    STYLE_DEFAULT, STYLE_DEFAULT, STYLE_DEFAULT,
     STYLE_DEFAULT, STYLE_DEFAULT, STYLE_DEFAULT,
     STYLE_DEFAULT, STYLE_DEFAULT,
     STYLE_DEFAULT, STYLE_DEFAULT,
     STYLE_DATE,    STYLE_DATE,
     STYLE_DEFAULT, STYLE_DEFAULT, STYLE_DEFAULT, STYLE_DEFAULT,
     STYLE_DEFAULT, STYLE_DEFAULT, STYLE_DEFAULT,
-    STYLE_DEFAULT, STYLE_DATE,
+    STYLE_DEFAULT,
+    STYLE_DATE,
+    STYLE_DEFAULT, STYLE_DEFAULT,
     STYLE_DEFAULT, STYLE_DEFAULT,
     STYLE_DEFAULT, STYLE_DEFAULT,
     STYLE_DEFAULT, STYLE_DEFAULT
@@ -154,9 +159,8 @@ class JDldap(object):
 jdldap = JDldap()
 
 
-def update(newfile, oldfile, options):
-    dryrun = options['dryrun']
-
+def update(oldfile, newfile, dryrun=False):
+    check_oldfile(oldfile)
     if dryrun:
         logger.warning("Dry-run. No LDAP and newsletter changes.")
 
@@ -168,54 +172,52 @@ def update(newfile, oldfile, options):
     write_department_excels(new, "uitvoer")
     logger.info("Department-xls complete")
 
-    # Don't run this block in Excel-only-mode
-    if not options['only_excel']:
-        if not dryrun:
-            jdldap.connect()
-        logger.info("Reading %s ..." % oldfile)
-        old = read_xls(oldfile)
-        logger.info("Reading complete")
-        logger.info("Computing changes...")
-        new_members, former_members = get_new_and_former_members(old, new)
-        changed_members = get_changed_members(old, new)
-        current_members_per_dep = split_by_department(new_members)
-        logger.info("Computing complete")
+    if not dryrun:
+        jdldap.connect()
+    logger.info("Reading %s ..." % oldfile)
+    old = read_xls(oldfile)
+    logger.info("Reading complete")
+    logger.info("Computing changes...")
+    new_members, former_members = get_new_and_former_members(old, new)
+    changed_members = get_changed_members(old, new)
+    current_members_per_dep = split_by_department(new_members)
+    logger.info("Computing complete")
 
-        # Remove old members
-        logger.info("Removing " + str(len(former_members)) + " members...")
-        remove_members_from_ldap(former_members, dryrun)
-        logger.info("Removing complete.")
-        # Update changed members
-        logger.info("Updating " + str(len(changed_members)) + " changed members...")
-        moved = update_changed_members(old, changed_members, dryrun)
-        logger.info("Changes complete.")
-        # Add new members
-        logger.info("Adding " + str(len(new_members)) + " new members...")
-        add_members_to_ldap(current_members_per_dep, dryrun)
-        logger.info("Adding complete.")
-        # Add the new members to their department
-        logger.info("Subscribing " + str(len(new_members)) + " new members to lists...")
-        subscribe_members_to_maillist(current_members_per_dep, dryrun)
-        logger.info("Subscribing complete.")
-        # Unsubscribe moved members from old department and subscribe to new department
-        logger.info("Moving " + str(len(moved)) + " members to new departments...")
-        moved_split = split_by_department(moved)
-        move_members_to_new_department(old, moved_split, dryrun)
-        write_department_excels(moved, "verhuisd")
-        logger.info("Moving complete.")
-        logger.info("=== Summary === ")
-        logger.info("Removed: " + str(len(former_members)))
-        logger.info("Added: " + str(len(new_members)))
-        logger.info("Updated: " + str(len(changed_members)))
-        logger.info("Changed department: " + str(len(moved)))
-        logger.info("==========")
-        if not dryrun:
-            create_new_checksum(newfile)
-        logger.info("SUCCESS!")
-        if dryrun:
-            logger.warning("Dry-run. No actual LDAP and Hemres changes!")
-        if not dryrun:
-            jdldap.disconnect()
+    # Remove old members
+    logger.info("Removing " + str(len(former_members)) + " members...")
+    remove_members_from_ldap(former_members, dryrun)
+    logger.info("Removing complete.")
+    # Update changed members
+    logger.info("Updating " + str(len(changed_members)) + " changed members...")
+    moved = update_changed_members(old, changed_members, dryrun)
+    logger.info("Changes complete.")
+    # Add new members
+    logger.info("Adding " + str(len(new_members)) + " new members...")
+    add_members_to_ldap(current_members_per_dep, dryrun)
+    logger.info("Adding complete.")
+    # Add the new members to their department
+    logger.info("Subscribing " + str(len(new_members)) + " new members to lists...")
+    subscribe_members_to_maillist(current_members_per_dep, dryrun)
+    logger.info("Subscribing complete.")
+    # Unsubscribe moved members from old department and subscribe to new department
+    logger.info("Moving " + str(len(moved)) + " members to new departments...")
+    moved_split = split_by_department(moved)
+    move_members_to_new_department(old, moved_split, dryrun)
+    write_department_excels(moved, "verhuisd")
+    logger.info("Moving complete.")
+    logger.info("=== Summary === ")
+    logger.info("Removed: " + str(len(former_members)))
+    logger.info("Added: " + str(len(new_members)))
+    logger.info("Updated: " + str(len(changed_members)))
+    logger.info("Changed department: " + str(len(moved)))
+    logger.info("==========")
+    if not dryrun:
+        create_new_checksum(newfile)
+    logger.info("SUCCESS!")
+    if dryrun:
+        logger.warning("Dry-run. No actual LDAP and Hemres changes!")
+    if not dryrun:
+        jdldap.disconnect()
 
 
 def update_changed_members(old, changed, is_dryrun):
@@ -263,44 +265,27 @@ def move_members_to_new_department(old, moved_split, is_dryrun):
                 janeus_subscribe.Command.subscribe(member_id, newlist)
 
 
-def parse_options(parser, options, args):
-    # Detect which mode we run as and check sanity
-    newfile = ""
-    oldfile = ""
-
-    if options.only_excel:
-        if len(args) != 1:
-            parser.error("need 1 argument: new.xls")
-        newfile = args[0]
+def check_oldfile(oldfile):
+    with open(oldfile, "rb") as f:
+        hash = hashlib.sha512(f.read())
+        oldsha = hash.hexdigest()
+    try:
+        f = open(CHECKSUMFILE, "r")
+    except IOError as e:
+        # If no checksum.txt exists, pretend it was correct
+        if e.errno == errno.ENOENT:
+            storedsha = oldsha
+            logger.warning("No checksum.txt found.")
+        else:
+            raise
     else:
-        if len(args) != 2:
-            parser.error("need 2 arguments: old.xls new.xls")
-        logger.info("Verifying sanity of input files")
-        
-        oldfile = args[0]
-        newfile = args[1]
-        with open(oldfile, "rb") as f:
-            hash = hashlib.sha512(f.read())
-            oldsha = hash.hexdigest()
-        try:
-            f = open(CHECKSUMFILE, "r") 
-        except IOError as e:
-            # If no checksum.txt exists, pretend it was correct
-            if e.errno == errno.ENOENT:
-                storedsha = oldsha
-                logger.warning("No checksum.txt found.")
-            else:
-                raise
-        else:
-            storedsha = f.readline().split()[0]  # Read sha512sum-compatible checksum-file
+        storedsha = f.readline().split()[0]  # Read sha512sum-compatible checksum-file
 
-        if oldsha == storedsha:
-            logger.info("Input files are sane (checksums match)")
-        else:
-            logger.critical("Wrong old.xls (according to checksum). Please contact the ICT-team if you are not completely sure what to do.")
-            sys.exit(1)
-
-    return newfile, oldfile
+    if oldsha == storedsha:
+        logger.info("Input files are sane (checksums match)")
+    else:
+        logger.critical("Wrong old.xls (according to checksum). Please contact the ICT-team if you are not completely sure what to do.")
+        sys.exit(1)
 
 
 def create_new_checksum(newfile):
@@ -309,6 +294,11 @@ def create_new_checksum(newfile):
         newsha = hashlib.sha512(f.read()).hexdigest()
     with open(CHECKSUMFILE, "w") as checksumfile:  # Write sha512sum-compatible checksum-file
         checksumfile.write("%s  %s\n" % (newsha, newfile))
+
+
+def create_department_excels_from_file(newfile, directory_name):
+    new = read_xls(newfile)
+    write_department_excels(new, directory_name)
 
 
 def write_department_excels(new, directory_name):
