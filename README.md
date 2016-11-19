@@ -1,6 +1,6 @@
 jdleden
 =======
-[![Dependency Status](https://gemnasium.com/jonge-democraten/jdleden.svg)](https://gemnasium.com/jonge-democraten/jdleden)  
+[![Build Status](https://travis-ci.org/jonge-democraten/jdleden.svg?branch=master)](https://travis-ci.org/jonge-democraten/jdleden) [![Coverage Status](https://coveralls.io/repos/github/jonge-democraten/jdleden/badge.svg?branch=master)](https://coveralls.io/github/jonge-democraten/jdleden?branch=master) [![Dependency Status](https://gemnasium.com/jonge-democraten/jdleden.svg)](https://gemnasium.com/jonge-democraten/jdleden)  
 
 This tool handles both department-spreadsheets and newsletter-subscriptions of the Jonge Democraten.
 
