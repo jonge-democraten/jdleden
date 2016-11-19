@@ -218,6 +218,12 @@ def update(oldfile, newfile, dryrun=False):
         logger.warning("Dry-run. No actual LDAP and Hemres changes!")
     if not dryrun:
         jdldap.disconnect()
+    return {
+        'removed': former_members,
+        'added': new_members,
+        'updated': changed_members,
+        'changed_department': moved
+    }
 
 
 def update_changed_members(old, changed, is_dryrun):
