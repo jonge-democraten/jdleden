@@ -5,7 +5,6 @@ import sys
 import os
 import errno
 import time
-import datetime
 import hashlib
 
 import xlrd
@@ -159,7 +158,7 @@ class JDldap(object):
 jdldap = JDldap()
 
 
-def update(oldfile, newfile, dryrun=False):
+def update(oldfile, newfile, dryrun=False, output_dir='uitvoer', output_moved_dir='verhuisd'):
     if not check_oldfile(oldfile, CHECKSUMFILE):
         sys.exit(1)
     if dryrun:
@@ -170,7 +169,7 @@ def update(oldfile, newfile, dryrun=False):
     logger.info("Reading complete")
 
     logger.info("Handling department-xls...")
-    write_department_excels(new, "uitvoer")
+    write_department_excels(new, output_dir)
     logger.info("Department-xls complete")
 
     if not dryrun:
@@ -204,7 +203,7 @@ def update(oldfile, newfile, dryrun=False):
     logger.info("Moving " + str(len(moved)) + " members to new departments...")
     moved_split = split_by_department(moved)
     move_members_to_new_department(old, moved_split, dryrun)
-    write_department_excels(moved, "verhuisd")
+    write_department_excels(moved, output_moved_dir)
     logger.info("Moving complete.")
     logger.info("=== Summary === ")
     logger.info("Removed: " + str(len(former_members)))
@@ -304,9 +303,9 @@ def create_new_checksum(newfile, checksumfile):
         outfile.write("%s  %s\n" % (newsha, newfile))
 
 
-def create_department_excels_from_file(newfile):
+def create_department_excels_from_file(newfile, output_dir='uitvoer'):
     new = read_xls(newfile)
-    write_department_excels(new, "uitvoer")
+    write_department_excels(new, output_dir)
 
 
 def write_department_excels(new, directory_name):

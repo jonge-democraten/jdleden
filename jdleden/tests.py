@@ -1,4 +1,5 @@
 import os
+import shutil
 
 from django.test import TestCase
 
@@ -13,11 +14,22 @@ class TestCaseLedenlijst(TestCase):
     newfile = 'testdata/test_data_b.xls'
 
     def test_update(self):
-        result = jdleden.ledenlijst.update(self.oldfile, self.newfile, dryrun=True)
-        self.assertEqual(len(result['removed']), 1)
-        self.assertEqual(len(result['added']), 1)
-        self.assertEqual(len(result['updated']), 2)
-        self.assertEqual(len(result['changed_department']), 1)
+        output_dir = 'testoutput'
+        output_moved_dir = 'testoutput_moved'
+        try:
+            result = jdleden.ledenlijst.update(
+                self.oldfile, self.newfile,
+                dryrun=True, output_dir=output_dir, output_moved_dir=output_moved_dir
+            )
+            self.assertEqual(len(result['removed']), 1)
+            self.assertEqual(len(result['added']), 1)
+            self.assertEqual(len(result['updated']), 2)
+            self.assertEqual(len(result['changed_department']), 1)
+            self.assertTrue(os.path.exists(output_dir))
+            self.assertTrue(os.path.exists(output_moved_dir))
+        finally:  # always remove the generated output
+            shutil.rmtree(output_dir)
+            shutil.rmtree(output_moved_dir)
 
     def test_checksum(self):
         checksum_filename = 'testchecksum.txt'
