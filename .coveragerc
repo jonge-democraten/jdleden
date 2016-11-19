@@ -4,3 +4,5 @@ source = jdleden
 [report]
 omit =
     jdleden/management/commands/*.py
+    jdleden/local_settings_example.py
+    jdleden/urls.py
