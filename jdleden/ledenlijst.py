@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
 import logging
@@ -8,8 +7,6 @@ import errno
 import time
 import datetime
 import hashlib
-import configparser
-from optparse import OptionParser
 
 import xlrd
 import xlwt
@@ -445,6 +442,3 @@ def excel_to_date(xldate):
     date = datetime.date(*datetuple[:3])
     return date
 
-
-if __name__ == "__main__":
-    main()
