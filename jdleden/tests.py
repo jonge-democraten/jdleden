@@ -12,15 +12,22 @@ from jdleden import afdelingenoud
 class TestCaseLedenlijst(TestCase):
     oldfile = 'testdata/test_data_a.xls'
     newfile = 'testdata/test_data_b.xls'
+    checksum_filename = 'testchecksum.txt'
 
     def test_update(self):
         output_dir = 'testoutput'
         output_moved_dir = 'testoutput_moved'
         try:
             result = jdleden.ledenlijst.update(
-                self.oldfile, self.newfile,
-                dryrun=True, output_dir=output_dir, output_moved_dir=output_moved_dir
+                self.oldfile,
+                self.newfile,
+                dryrun=False,
+                no_ldap=True,
+                out_dir=output_dir,
+                out_moved_dir=output_moved_dir,
+                checksum_file=self.checksum_filename
             )
+            self.assertTrue(result is not None)
             self.assertEqual(len(result['removed']), 1)
             self.assertEqual(len(result['added']), 1)
             self.assertEqual(len(result['updated']), 2)
@@ -28,18 +35,20 @@ class TestCaseLedenlijst(TestCase):
             self.assertTrue(os.path.exists(output_dir))
             self.assertTrue(os.path.exists(output_moved_dir))
         finally:  # always remove the generated output
-            shutil.rmtree(output_dir)
-            shutil.rmtree(output_moved_dir)
+            if os.path.exists(output_dir):
+                shutil.rmtree(output_dir)
+            if os.path.exists(output_moved_dir):
+                shutil.rmtree(output_moved_dir)
+            os.remove(self.checksum_filename)
 
     def test_checksum(self):
-        checksum_filename = 'testchecksum.txt'
-        jdleden.ledenlijst.create_new_checksum(self.newfile, checksum_filename)
-        self.assertTrue(os.path.exists(checksum_filename))
-        is_same = jdleden.ledenlijst.check_oldfile(self.newfile, checksum_filename)
+        jdleden.ledenlijst.create_new_checksum(self.newfile, self.checksum_filename)
+        self.assertTrue(os.path.exists(self.checksum_filename))
+        is_same = jdleden.ledenlijst.check_oldfile(self.newfile, self.checksum_filename)
         self.assertTrue(is_same)
-        is_same = jdleden.ledenlijst.check_oldfile(self.oldfile, checksum_filename)
+        is_same = jdleden.ledenlijst.check_oldfile(self.oldfile, self.checksum_filename)
         self.assertFalse(is_same)
-        os.remove(checksum_filename)
+        os.remove(self.checksum_filename)
 
 
 class TestCaseChangedDepartments(TestCase):

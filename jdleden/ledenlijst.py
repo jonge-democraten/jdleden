@@ -6,27 +6,21 @@ import os
 import errno
 import time
 import hashlib
+from unittest.mock import create_autospec
 
 import xlrd
 import xlwt
-import ldap
-import ldap.modlist as modlist
 
 from hemres.management.commands import janeus_subscribe
 from hemres.management.commands import janeus_unsubscribe
 
 from jdleden.afdelingen import AFDELINGEN
-from jdleden import settings
+from jdleden.jdldap import JDldap
 
 logger = logging.getLogger(__name__)
 
 NOW = time.strftime("%s")          # Epoch-time
 NOWHUMAN = time.strftime("%F %T")  # Human-readable time
-# Trick to establish the directory of the actual script, even when called
-# via symlink.  The purpose of this is to write output-files relative to
-# the script-directory, not the current directory.
-SCRIPTDIR = os.path.dirname(os.path.realpath(__file__))
-CHECKSUMFILE = os.path.join(SCRIPTDIR, "checksum.txt")
 
 # Give all important columns a name
 LIDNUMMER  = 0
@@ -98,78 +92,25 @@ COLUMN_WIDTHS = [
 ]
 
 
-class JDldap(object):
-    def __init__(self):
-        self.ldap_connection = None
+def update(oldfile, newfile, dryrun=False, no_ldap=False, out_dir='uitvoer', out_moved_dir='verhuisd', checksum_file='checksum.txt'):
+    if not dryrun and not check_oldfile(oldfile, checksum_file):
+        logger.critical('early return')
+        return None
 
-    def connect(self):
-        self.ldap_connection = ldap.initialize(settings.LDAP_NAME)
-        try:
-            self.ldap_connection.simple_bind_s(settings.LDAP_DN, settings.LDAP_PASSWORD)
-        except ldap.LDAPError as e:
-            logger.critical(str(e))
-            raise
-
-    def disconnect(self):
-        if self.ldap_connection:
-            self.ldap_connection.unbind_s()
-
-    def doldap_remove(self, id):
-        self.check_connection()
-        dn_to_delete = "cn=" + str(int(id)) + ",ou=users,dc=jd,dc=nl"
-        try:
-            self.ldap_connection.delete_s(dn_to_delete)
-        except ldap.LDAPError as e:
-            logger.warning(str(e) + " - Could not remove - " + str(int(id)))
-            # raise # this can happen because the database is transactional but the LDAP not yet (script can come here twice)
-
-    def doldap_add(self, lidnummer, naam, mail, afdeling):
-        self.check_connection()
-        dn_to_add = "cn=" + str(int(lidnummer)) + ",ou=users,dc=jd,dc=nl"
-        attrs = {}
-        attrs['objectclass'] = ['inetOrgPerson'.encode('utf8')]
-        attrs['sn'] = naam.encode('utf8')
-        attrs['mail'] = mail.encode('utf8')
-        attrs['ou'] = afdeling.encode('utf8')
-
-        ldif = modlist.addModlist(attrs)
-        try:
-            self.ldap_connection.add_s(dn_to_add, ldif)
-        except ldap.LDAPError as e:
-            logger.warning(str(e) + " - Could not add - " + str(int(lidnummer)))
-            # raise # this can happen because the database is transactional but the LDAP not yet (script can come here twice)
-
-    def doldap_modify(self,lidnummer, naam, mail, afdeling):
-        self.check_connection()
-        dn_to_mod = "cn=" + str(int(lidnummer)) + ",ou=users,dc=jd,dc=nl"
-        attrs = [(ldap.MOD_REPLACE, "sn", naam.encode('utf8')), (ldap.MOD_REPLACE, "mail", mail.encode('utf8')),
-                 (ldap.MOD_REPLACE, "ou", afdeling.encode('utf8'))]
-        try:
-            self.ldap_connection.modify_s(dn_to_mod, attrs)
-        except ldap.LDAPError as e:
-            logger.warning(str(e) + " - Could not modify - " + str(int(lidnummer)))
-            raise
-
-    def check_connection(self):
-        if not self.ldap_connection:
-            raise RuntimeError('No connection with LDAP!')
-
-
-jdldap = JDldap()
-
-
-def update(oldfile, newfile, dryrun=False, output_dir='uitvoer', output_moved_dir='verhuisd'):
-    if not check_oldfile(oldfile, CHECKSUMFILE):
-        sys.exit(1)
     if dryrun:
         logger.warning("Dry-run. No LDAP and newsletter changes.")
+
+    if no_ldap:
+        jdldap = create_autospec(JDldap)  # this is a mock jdldap and does nothing, used for testing
+    else:
+        jdldap = JDldap()
 
     logger.info("Reading %s ..." % newfile)
     new = read_xls(newfile)
     logger.info("Reading complete")
 
     logger.info("Handling department-xls...")
-    write_department_excels(new, output_dir)
+    write_department_excels(new, out_dir)
     logger.info("Department-xls complete")
 
     if not dryrun:
@@ -185,15 +126,15 @@ def update(oldfile, newfile, dryrun=False, output_dir='uitvoer', output_moved_di
 
     # Remove old members
     logger.info("Removing " + str(len(former_members)) + " members...")
-    remove_members_from_ldap(former_members, dryrun)
+    remove_members_from_ldap(former_members, jdldap, dryrun)
     logger.info("Removing complete.")
     # Update changed members
     logger.info("Updating " + str(len(changed_members)) + " changed members...")
-    moved = update_changed_members(old, changed_members, dryrun)
+    moved = update_changed_members(old, jdldap, changed_members, dryrun)
     logger.info("Changes complete.")
     # Add new members
     logger.info("Adding " + str(len(new_members)) + " new members...")
-    add_members_to_ldap(current_members_per_dep, dryrun)
+    add_members_to_ldap(current_members_per_dep, jdldap, dryrun)
     logger.info("Adding complete.")
     # Add the new members to their department
     logger.info("Subscribing " + str(len(new_members)) + " new members to lists...")
@@ -203,7 +144,7 @@ def update(oldfile, newfile, dryrun=False, output_dir='uitvoer', output_moved_di
     logger.info("Moving " + str(len(moved)) + " members to new departments...")
     moved_split = split_by_department(moved)
     move_members_to_new_department(old, moved_split, dryrun)
-    write_department_excels(moved, output_moved_dir)
+    write_department_excels(moved, out_moved_dir)
     logger.info("Moving complete.")
     logger.info("=== Summary === ")
     logger.info("Removed: " + str(len(former_members)))
@@ -212,7 +153,7 @@ def update(oldfile, newfile, dryrun=False, output_dir='uitvoer', output_moved_di
     logger.info("Changed department: " + str(len(moved)))
     logger.info("==========")
     if not dryrun:
-        create_new_checksum(newfile)
+        create_new_checksum(newfile, checksum_file)
     logger.info("SUCCESS!")
     if dryrun:
         logger.warning("Dry-run. No actual LDAP and Hemres changes!")
@@ -226,7 +167,7 @@ def update(oldfile, newfile, dryrun=False, output_dir='uitvoer', output_moved_di
     }
 
 
-def update_changed_members(old, changed, is_dryrun):
+def update_changed_members(old, jdldap, changed, is_dryrun):
     moved = {}
     for id in changed.keys():
         if not is_dryrun:
@@ -239,14 +180,14 @@ def update_changed_members(old, changed, is_dryrun):
     return moved
 
 
-def add_members_to_ldap(plus_split, is_dryrun):
+def add_members_to_ldap(plus_split, jdldap, is_dryrun):
     for d in plus_split.keys():
         for id in plus_split[d].keys():
             if not is_dryrun:
                 jdldap.doldap_add(plus_split[d][id][LIDNUMMER], plus_split[d][id][NAAM], plus_split[d][id][EMAIL], d)
 
 
-def remove_members_from_ldap(members, is_dryrun):
+def remove_members_from_ldap(members, jdldap, is_dryrun):
     for id in members:
         if not is_dryrun:
             jdldap.doldap_remove(id)
@@ -296,7 +237,7 @@ def check_oldfile(oldfile, checksumfile):
 
 
 def create_new_checksum(newfile, checksumfile):
-    logger.info("Creating new checksum.txt...")
+    logger.info("Creating new " + checksumfile)
     with open(newfile, "rb") as f:
         newsha = hashlib.sha512(f.read()).hexdigest()
     with open(checksumfile, "w") as outfile:  # Write sha512sum-compatible checksum-file

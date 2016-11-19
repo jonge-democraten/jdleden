@@ -11,4 +11,4 @@ class Command(BaseCommand):
         parser.add_argument("--dryrun", action="store_true", dest="dryrun", help="don't execute any SQL or LDAP")
 
     def handle(self, *args, **options):
-        update(options['oldfile'][0], options['newfile'][0], options['dryrun'])
+        update(options['oldfile'][0], options['newfile'][0], dryrun=options['dryrun'])
