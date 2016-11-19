@@ -1,0 +1,6 @@
+[run]
+source = jdleden
+
+[report]
+omit =
+    jdleden/management/commands/*.py
