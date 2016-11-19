@@ -1,32 +1,16 @@
-#!/usr/bin/env python3.4
+import logging
 
-from optparse import OptionParser
+from jdleden import ledenlijst
+from jdleden import afdelingen
+from jdleden import afdelingenoud
 
-import ledenlijst
-from hemresadapter import HemresAdapter
-from jdledenlogger import logger
+logger = logging.getLogger(__name__)
 
-import afdelingenoud
-import afdelingen
 
-def main():
-    # Define command-line options
-    usage = """\
-Usage: %prog [options] ledenlijst.xls"""
-    parser = OptionParser(usage)
-    parser.add_option(
-            "-n", "--dryrun", action="store_true", dest="dryrun",
-            help="don't execute any SQL")
-    
-    # Read options and check sanity
-    (options, args) = parser.parse_args()
-    if len(args) != 1:
-        parser.error("Onjuist aantal argumenten.")
-    try:
-        newfile = args[0]
-    except (ValueError, AttributeError):
-        parser.error("Fout in een van de argumenten.")
-
+def move_members(members_file, dryrun):
+    logger.info('BEGIN')
+    logger.info('file: ' + members_file)
+    logger.info('dryrun: ' + str(dryrun))
     afdelingen_new = afdelingen.AFDELINGEN
     afdelingen_oud = afdelingenoud.AFDELINGEN
     
@@ -34,8 +18,8 @@ Usage: %prog [options] ledenlijst.xls"""
     check_postcode_indeling(afdelingen_new)
     check_postcode_indeling(afdelingen_oud)
 
-    logger.info("Reading %s ..." % (newfile))
-    members = ledenlijst.read_xls(newfile)
+    logger.info("Reading %s ..." % members_file)
+    members = ledenlijst.read_xls(members_file)
     logger.info("Reading complete")
     logger.info("Calculating reallocated members")
     
@@ -52,11 +36,12 @@ Usage: %prog [options] ledenlijst.xls"""
         newdept = find_afdeling(afdelingen.AFDELINGEN, ledenlijst.parse_postcode(member[ledenlijst.POSTCODE]))
         oldlist = "nieuwsbrief-" + olddept.lower()
         newlist = "nieuwsbrief-" + newdept.lower()
-        if not options.dryrun:
+        if not dryrun:
             hemresadapter.unsubscribe_member_from_list(member[ledenlijst.LIDNUMMER], oldlist)
             hemresadapter.subscribe_member_to_list(member[ledenlijst.LIDNUMMER], newlist)
-    if options.dryrun:
+    if dryrun:
         logger.warning("Dry-run. No actual database changes!")
+    logger.info('END')
 
 
 def get_reallocated_members(members):
@@ -116,7 +101,3 @@ def check_overlap_afdelingen(afdelingsgrenzen):
     
     if len(overlapping_postcodes) > 0:
         ledenlijst.logger.error('overlapping postcodes: ' + str(len(overlapping_postcodes)))
-
-        
-if __name__ == "__main__":
-    main()
