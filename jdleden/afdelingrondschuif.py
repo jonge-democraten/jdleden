@@ -1,5 +1,8 @@
 import logging
 
+from hemres.management.commands import janeus_subscribe
+from hemres.management.commands import janeus_unsubscribe
+
 from jdleden import ledenlijst
 from jdleden import afdelingen
 from jdleden import afdelingenoud
@@ -29,19 +32,19 @@ def move_members(members_file, dryrun):
         logger.info('Move a member living in ' + realloc[9] + ' from ' + find_afdeling( afdelingen_oud, ledenlijst.parse_postcode(realloc[ledenlijst.POSTCODE])) + ' to ' + find_afdeling( afdelingen_new, ledenlijst.parse_postcode(realloc[ledenlijst.POSTCODE]) ) )
 
     logger.info("Doing mass (un)subscribes")
-    # Iterate over reallocated.values() and perform the moving
-    hemresadapter = HemresAdapter()
+    # Iterate over reallocated.values() and move members
     for member in reallocated:
         olddept = find_afdeling(afdelingenoud.AFDELINGEN, ledenlijst.parse_postcode(member[ledenlijst.POSTCODE]))
         newdept = find_afdeling(afdelingen.AFDELINGEN, ledenlijst.parse_postcode(member[ledenlijst.POSTCODE]))
         oldlist = "nieuwsbrief-" + olddept.lower()
         newlist = "nieuwsbrief-" + newdept.lower()
         if not dryrun:
-            hemresadapter.unsubscribe_member_from_list(member[ledenlijst.LIDNUMMER], oldlist)
-            hemresadapter.subscribe_member_to_list(member[ledenlijst.LIDNUMMER], newlist)
+            janeus_unsubscribe(member[ledenlijst.LIDNUMMER], oldlist)
+            janeus_subscribe(member[ledenlijst.LIDNUMMER], newlist)
     if dryrun:
         logger.warning("Dry-run. No actual database changes!")
     logger.info('END')
+    return reallocated
 
 
 def get_reallocated_members(members):
@@ -77,11 +80,14 @@ def check_postcode_indeling(afdelingen):
     
             
 def check_postcode_ranges(afdelingsgrenzen):
+    correct_ranges = True
     for _afdeling, postcodes in afdelingsgrenzen.items():
         for postcoderange in postcodes:
             if postcoderange[0] > postcoderange[1]:
                 ledenlijst.logger.error('wrong range, lower bound is higher than upper bound: ' + str(postcoderange))
-                
+                correct_ranges = False
+    return correct_ranges
+
             
 def check_overlap_afdelingen(afdelingsgrenzen):
     overlapping_postcodes = []    
@@ -101,3 +107,5 @@ def check_overlap_afdelingen(afdelingsgrenzen):
     
     if len(overlapping_postcodes) > 0:
         ledenlijst.logger.error('overlapping postcodes: ' + str(len(overlapping_postcodes)))
+        return False
+    return True
