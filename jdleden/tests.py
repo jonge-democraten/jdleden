@@ -3,6 +3,9 @@ import os
 from django.test import TestCase
 
 import jdleden.ledenlijst
+import jdleden.afdelingrondschuif
+from jdleden import afdelingen
+from jdleden import afdelingenoud
 
 
 class TestCaseLedenlijst(TestCase):
@@ -25,3 +28,24 @@ class TestCaseLedenlijst(TestCase):
         is_same = jdleden.ledenlijst.check_oldfile(self.oldfile, checksum_filename)
         self.assertFalse(is_same)
         os.remove(checksum_filename)
+
+
+class TestCaseChangedDepartments(TestCase):
+    members_file = 'testdata/test_data_a.xls'
+
+    def test_change_departments(self):
+        moved_members = jdleden.afdelingrondschuif.move_members(self.members_file, dryrun=True)
+        self.assertEqual(len(moved_members), 454)
+
+
+class TestCasePostcodeChecks(TestCase):
+
+    def test_check_postcode_overlap(self):
+        has_no_overlap = jdleden.afdelingrondschuif.check_overlap_afdelingen(afdelingen.AFDELINGEN)
+        self.assertTrue(has_no_overlap)
+        has_no_overlap = jdleden.afdelingrondschuif.check_overlap_afdelingen(afdelingenoud.AFDELINGEN)
+        self.assertTrue(has_no_overlap)
+
+    def test_check_postcode_ranges(self):
+        correct_ranges = jdleden.afdelingrondschuif.check_postcode_ranges(afdelingen.AFDELINGEN)
+        self.assertTrue(correct_ranges)
