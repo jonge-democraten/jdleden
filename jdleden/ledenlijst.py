@@ -429,11 +429,3 @@ def trymkdir(dir, perm=0o700):
             pass
         else:
             raise
-
-
-def excel_to_date(xldate):
-    # Convert Excel-date (float) to datetime-object
-    datetuple = xlrd.xldate_as_tuple(xldate, 0)
-    date = datetime.date(*datetuple[:3])
-    return date
-
