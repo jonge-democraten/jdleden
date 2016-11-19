@@ -31,7 +31,7 @@ CHECKSUMFILE = os.path.join(SCRIPTDIR, "checksum.txt")
 
 # Give all important columns a name
 LIDNUMMER  = 0
-NAAM       = 4
+NAAM       = 1
 POSTCODE   = 8
 WOONPLAATS = 9
 LAND       = 11
@@ -42,18 +42,20 @@ GEBDATUM   = 22
 # The headers of the input file must exactly match the following definition
 HEADERS = [
     u'Relatienummer',
-    u'Achternaam', u'Voorletters', u'Tussenvoegsel', u'Volledige naam',
-    u'Bez. straat', u'Adres 1: huisnummer', u'Toevoeging',
-    u'Postcode (correspondentie adres)', u'Woonplaats (correspondentie adres)',
-    u'Gemeente', u'Land (correspondentie adres)',
+    u'Volledige naam',
+    u'Adres: Achternaam', u'Adres: Tussenvoegsel', u'Adres: Voorletters',
+    u'Adres: Straatnaam', u'Adres: Huisnummer', u'Adres: Hnr Toevoeging',
+    u'Adres: Postcode', u'Adres: Woonplaats',
+    u'Gemeente', u'Adres: Land',
     u'Geen lid sinds', u'Geen abonnement sinds',
     u'Is lid D66', u'Stemrecht D66', u'Is lid JD', u'Stemrecht JD',
-    u'E-mail privé', u'Mobiele telefoon', u'Prive telefoonnummer',
-    u'Geslacht', u'Geboortedatum',
+    u'E-mail privé', u'Telefoon: Mobiel', u'Telefoon: Prive',
+    u'Geslacht',
+    u'Geboortedatum',
     u'Ontbrekende gegevens', u'Vrij tekstveld test',
     u'Aanhef formeel', u'Aanhef informeel',
-    u'Betaalmethodevoorkeur',
-    u'Overleden'
+    u'Betaalmethodevoorkeur', u'Gewijzigd op',
+    u'Contact: Bulk-e-mail niet toestaan', u'Overleden'
 ]
 
 # Excel-output formatting
@@ -64,14 +66,17 @@ STYLE_DATE = xlwt.easyxf(num_format_str="YYYY-MM-DD")
 # Distinguish between dates and other field types
 CELL_STYLES = [
     STYLE_DEFAULT,
-    STYLE_DEFAULT, STYLE_DEFAULT, STYLE_DEFAULT, STYLE_DEFAULT,
+    STYLE_DEFAULT,
+    STYLE_DEFAULT, STYLE_DEFAULT, STYLE_DEFAULT,
     STYLE_DEFAULT, STYLE_DEFAULT, STYLE_DEFAULT,
     STYLE_DEFAULT, STYLE_DEFAULT,
     STYLE_DEFAULT, STYLE_DEFAULT,
     STYLE_DATE,    STYLE_DATE,
     STYLE_DEFAULT, STYLE_DEFAULT, STYLE_DEFAULT, STYLE_DEFAULT,
     STYLE_DEFAULT, STYLE_DEFAULT, STYLE_DEFAULT,
-    STYLE_DEFAULT, STYLE_DATE,
+    STYLE_DEFAULT,
+    STYLE_DATE,
+    STYLE_DEFAULT, STYLE_DEFAULT,
     STYLE_DEFAULT, STYLE_DEFAULT,
     STYLE_DEFAULT, STYLE_DEFAULT,
     STYLE_DEFAULT, STYLE_DEFAULT
