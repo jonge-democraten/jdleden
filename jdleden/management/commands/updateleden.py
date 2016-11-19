@@ -12,6 +12,4 @@ class Command(BaseCommand):
         parser.add_argument("--excel", action="store_true", dest="only_excel", help="only generate Excel-files per department")
 
     def handle(self, *args, **options):
-        print(options['oldfile'][0])
-        print(options['newfile'][0])
         update(options['newfile'][0], options['oldfile'][0], options)

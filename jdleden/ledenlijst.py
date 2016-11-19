@@ -13,8 +13,10 @@ import xlwt
 import ldap
 import ldap.modlist as modlist
 
+from hemres.management.commands import janeus_subscribe
+from hemres.management.commands import janeus_unsubscribe
+
 from jdleden.afdelingen import AFDELINGEN
-from jdleden.hemresadapter import HemresAdapter
 from jdleden import settings
 
 logger = logging.getLogger(__name__)
@@ -153,10 +155,6 @@ jdldap = JDldap()
 
 
 def update(newfile, oldfile, options):
-    print(options['dryrun'])
-    # Define command-line options
-    # newfile, oldfile = parse_options(parser, options, args)
-
     dryrun = options['dryrun']
 
     if dryrun:
@@ -171,7 +169,7 @@ def update(newfile, oldfile, options):
     logger.info("Department-xls complete")
 
     # Don't run this block in Excel-only-mode
-    if not options.only_excel:
+    if not options['only_excel']:
         if not dryrun:
             jdldap.connect()
         logger.info("Reading %s ..." % oldfile)
@@ -247,23 +245,22 @@ def remove_members_from_ldap(members, is_dryrun):
 
 
 def subscribe_members_to_maillist(plus_split, is_dryrun):
-    hemres = HemresAdapter()
     for d in plus_split.keys():
-        for id in plus_split[d].keys():
+        for member_id in plus_split[d].keys():
             if not is_dryrun:
-                hemres.subscribe_member_to_list(id, "digizine")
-                hemres.subscribe_member_to_list(id, "nieuwsbrief-" + d.lower())
+                janeus_subscribe.Command.subscribe(member_id, "digizine")
+                janeus_subscribe.Command.subscribe(member_id, "nieuwsbrief-" + d.lower())
 
 
 def move_members_to_new_department(old, moved_split, is_dryrun):
-    hemres = HemresAdapter()
     for department in moved_split.keys():
         for member_id in moved_split[department].keys():
             newlist = "nieuwsbrief-" + department.lower()
             olddept = find_department(parse_postcode(old[member_id][POSTCODE]))
             oldlist = "nieuwsbrief-" + olddept.lower()
             if not is_dryrun:
-                hemres.move_member(member_id, oldlist, newlist)
+                janeus_unsubscribe.Command.unsubscribe(member_id, oldlist)
+                janeus_subscribe.Command.subscribe(member_id, newlist)
 
 
 def parse_options(parser, options, args):
