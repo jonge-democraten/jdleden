@@ -5,3 +5,4 @@ xlwt==1.1.2
 -e git+https://github.com/jonge-democraten/python-ldap@py3#egg=python-ldap
 -e git+https://github.com/jonge-democraten/hemres@0.14#egg=hemres
 -e git+https://github.com/jonge-democraten/janeus@1.4#egg=janeus
+mysqlclient==1.3.9
