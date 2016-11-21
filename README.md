@@ -4,6 +4,8 @@ jdleden
 
 This tool handles both department-spreadsheets and newsletter-subscriptions of the Jonge Democraten.
 
+Requires Python 3.3+
+
 ## Installation
 ```
 $ git clone https://github.com/jonge-democraten/jdleden.git
