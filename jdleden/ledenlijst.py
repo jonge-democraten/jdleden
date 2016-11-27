@@ -254,8 +254,8 @@ def write_department_excels(new, directory_name):
     outdir = os.path.join(directory_name, time.strftime("%F %T"))
     trymkdir(outdir, 0o700)
     for dept in split.keys():
-        fileDepartment = os.path.join(outdir, dept + ".xls")
-        write_xls(fileDepartment, split[dept])
+        file_department = os.path.join(outdir, dept + ".xls")
+        write_xls(file_department, split[dept])
 
 
 def read_xls(f):
