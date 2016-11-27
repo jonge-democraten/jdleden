@@ -1,10 +1,4 @@
 
-LDAP_NAME = 'ldap://'
-LDAP_PASSWORD = ''
-LDAP_DN = 'cn=writeuser,ou=sysUsers,dc=jd,dc=nl'
-
-SECRET_KEY = ''
-
 DATABASES = {
     "default": {
         # Add "postgresql_psycopg2", "mysql", "sqlite3" or "oracle".
@@ -22,3 +16,18 @@ DATABASES = {
     }
 }
 
+#################
+# LDAP SETTINGS #
+#################
+
+LDAP_NAME = 'ldap://127.0.0.1:389/'
+LDAP_DN = 'cn=writeall,ou=sysUsers,dc=jd,dc=nl'
+LDAP_PASSWORD = ''
+
+###################
+# JANEUS SETTINGS #
+###################
+
+JANEUS_SERVER = "ldap://127.0.0.1:389/"
+JANEUS_DN = "cn=readall,ou=sysUsers,dc=jd,dc=nl"
+JANEUS_PASS = ""
