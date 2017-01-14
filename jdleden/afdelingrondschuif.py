@@ -1,7 +1,7 @@
 import logging
 
-from hemres.management.commands import janeus_subscribe
-from hemres.management.commands import janeus_unsubscribe
+from hemres.management.commands.janeus_unsubscribe import Command as CommandUnsub
+from hemres.management.commands.janeus_subscribe import Command as CommandSub
 
 from jdleden import ledenlijst
 from jdleden import afdelingen
@@ -42,8 +42,8 @@ def move_members(members_file, dryrun):
         oldlist = "nieuwsbrief-" + olddept.lower()
         newlist = "nieuwsbrief-" + newdept.lower()
         if not dryrun:
-            janeus_unsubscribe(member[ledenlijst.LIDNUMMER], oldlist)
-            janeus_subscribe(member[ledenlijst.LIDNUMMER], newlist)
+            CommandUnsub.unsubscribe(member[ledenlijst.LIDNUMMER], oldlist)
+            CommandSub.subscribe(member[ledenlijst.LIDNUMMER], newlist)
     if dryrun:
         logger.warning("Dry-run. No actual database changes!")
     logger.info('END')
