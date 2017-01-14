@@ -32,7 +32,7 @@ def move_members(members_file, dryrun):
     logger.info('Members to be moved:')
     reallocated = get_reallocated_members(members)
     for realloc in reallocated:
-        town = realloc[9]
+        town = realloc[ledenlijst.WOONPLAATS]
         afdeling_from = find_afdeling( afdelingen_oud, ledenlijst.parse_postcode(realloc[ledenlijst.POSTCODE]))
         afdeling_to   = find_afdeling( afdelingen_new, ledenlijst.parse_postcode(realloc[ledenlijst.POSTCODE]))
         logger.info('Move a member living in ' + town + ' from ' + afdeling_from + ' to ' + afdeling_to)
