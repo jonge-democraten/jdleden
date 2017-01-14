@@ -56,7 +56,7 @@ class TestCaseChangedDepartments(TestCase):
 
     def test_change_departments(self):
         moved_members = jdleden.afdelingrondschuif.move_members(self.members_file, dryrun=True)
-        self.assertEqual(len(moved_members), 454)
+        self.assertEqual(len(moved_members), 3)  # this needs to be updated after afdelingen and afdelingenoud has changed
 
 
 class TestCasePostcodeChecks(TestCase):
