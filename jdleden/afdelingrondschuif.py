@@ -31,10 +31,12 @@ def move_members(members_file, dryrun):
     
     logger.info('Members to be moved:')
     reallocated = get_reallocated_members(members)
-    for realloc in reallocated:
-        town = realloc[ledenlijst.WOONPLAATS]
-        afdeling_from = find_afdeling( afdelingen_oud, ledenlijst.parse_postcode(realloc[ledenlijst.POSTCODE]))
-        afdeling_to   = find_afdeling( afdelingen_new, ledenlijst.parse_postcode(realloc[ledenlijst.POSTCODE]))
+    for member in reallocated:
+        town = member[ledenlijst.WOONPLAATS]
+        postcode = member[ledenlijst.POSTCODE]
+        digits = ledenlijst.parse_postcode(postcode)
+        afdeling_from = find_afdeling(afdelingen_oud, digits)
+        afdeling_to   = find_afdeling(afdelingen_new, digits)
         logger.info('Move a member living in ' + town + ' from ' + afdeling_from + ' to ' + afdeling_to)
 
     logger.info("Doing mass (un)subscribes")
