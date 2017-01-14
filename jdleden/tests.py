@@ -54,6 +54,10 @@ class TestCaseLedenlijst(TestCase):
 class TestCaseChangedDepartments(TestCase):
     members_file = 'testdata/test_data_a.xls'
 
+    def test_check_postcodes(self):
+        self.assertTrue(jdleden.afdelingrondschuif.check_postcode_indeling(afdelingen.AFDELINGEN), True)
+        self.assertTrue(jdleden.afdelingrondschuif.check_postcode_indeling(afdelingenoud.AFDELINGEN), True)
+
     def test_change_departments(self):
         moved_members = jdleden.afdelingrondschuif.move_members(self.members_file, dryrun=True)
         self.assertEqual(len(moved_members), 3)  # this needs to be updated after afdelingen and afdelingenoud has changed
