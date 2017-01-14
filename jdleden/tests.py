@@ -7,6 +7,7 @@ import jdleden.ledenlijst
 import jdleden.afdelingrondschuif
 from jdleden import afdelingen
 from jdleden import afdelingenoud
+from testdata import test_afdelingen
 
 
 class TestCaseLedenlijst(TestCase):
@@ -55,8 +56,11 @@ class TestCaseChangedDepartments(TestCase):
     members_file = 'testdata/test_data_a.xls'
 
     def test_check_postcodes(self):
-        self.assertTrue(jdleden.afdelingrondschuif.check_postcode_indeling(afdelingen.AFDELINGEN), True)
-        self.assertTrue(jdleden.afdelingrondschuif.check_postcode_indeling(afdelingenoud.AFDELINGEN), True)
+        self.assertTrue(jdleden.afdelingrondschuif.check_postcode_indeling(afdelingen.AFDELINGEN))
+        self.assertTrue(jdleden.afdelingrondschuif.check_postcode_indeling(afdelingenoud.AFDELINGEN))
+        self.assertFalse(jdleden.afdelingrondschuif.check_postcode_indeling(test_afdelingen.AFDELINGEN))
+        self.assertFalse(jdleden.afdelingrondschuif.check_overlap_afdelingen(test_afdelingen.AFDELINGEN))
+        self.assertFalse(jdleden.afdelingrondschuif.check_postcode_ranges(test_afdelingen.AFDELINGEN))
 
     def test_change_departments(self):
         moved_members = jdleden.afdelingrondschuif.move_members(self.members_file, dryrun=True)
