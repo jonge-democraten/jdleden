@@ -18,9 +18,12 @@ def move_members(members_file, dryrun):
     afdelingen_oud = afdelingenoud.AFDELINGEN
     
     logger.info("Checking consistency new and old postcode ranges...")
-    check_postcode_indeling(afdelingen_new)
-    check_postcode_indeling(afdelingen_oud)
-
+    if not check_postcode_indeling(afdelingen_new):
+        logger.error('postcode check for new departments failed')
+        raise RuntimeError
+    if not check_postcode_indeling(afdelingen_oud):
+        logger.error('postcode check for old departments failed')
+        raise RuntimeError
     logger.info("Reading %s ..." % members_file)
     members = ledenlijst.read_xls(members_file)
     logger.info("Reading complete")
@@ -54,7 +57,6 @@ def get_reallocated_members(members):
         postcode = ledenlijst.parse_postcode(postcode_string)
         if not postcode:
             continue
-        
         if postcode >= 1000 and postcode < 10000:
             afdeling_old = find_afdeling(afdelingenoud.AFDELINGEN, postcode)
             afdeling_new = find_afdeling(afdelingen.AFDELINGEN, postcode)
@@ -62,7 +64,6 @@ def get_reallocated_members(members):
                 reallocated_members.append(member)
         else:
             ledenlijst.logger.warning('invalid postcode: ' + str(postcode) + ' for member living in ' + member[ledenlijst.WOONPLAATS])
-    
     return reallocated_members
  
 
@@ -75,8 +76,9 @@ def find_afdeling(afdelingsgrenzen, postcode):
 
 
 def check_postcode_indeling(afdelingen):
-    check_overlap_afdelingen(afdelingen)
-    check_postcode_ranges(afdelingen)
+    no_overlap = check_overlap_afdelingen(afdelingen)
+    correct_ranges = check_postcode_ranges(afdelingen)
+    return no_overlap and correct_ranges
     
             
 def check_postcode_ranges(afdelingsgrenzen):
@@ -104,7 +106,6 @@ def check_overlap_afdelingen(afdelingsgrenzen):
             ledenlijst.logger.warning('postcode: ' + str(i) + ' in afdelingen: ' + str(afdelingen))
         if counter == 0:
             ledenlijst.logger.warning('postcode: ' + str(i) + ' heeft geen afdeling')
-    
     if len(overlapping_postcodes) > 0:
         ledenlijst.logger.error('overlapping postcodes: ' + str(len(overlapping_postcodes)))
         return False
