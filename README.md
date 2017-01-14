@@ -12,6 +12,7 @@ $ git clone https://github.com/jonge-democraten/jdleden.git
 $ virtualenv -p python3 env
 $ source env/bin/activate
 $ pip install -r requirements.txt
+$ python create_local_settings.py
 ```
 
 Copy `jdleden/local_settings_example.py`, name it `jdleden/local_settings.py` and set the settings inside.
