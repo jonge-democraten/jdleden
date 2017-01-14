@@ -27,28 +27,24 @@ def move_members(members_file, dryrun):
     logger.info("Reading %s ..." % members_file)
     members = ledenlijst.read_xls(members_file)
     logger.info("Reading complete")
+
     logger.info("Calculating reallocated members")
-    
-    logger.info('Members to be moved:')
     reallocated = get_reallocated_members(members)
+
+    logger.info("Doing mass (un)subscribes")
     for member in reallocated:
+        lidnummer = member[ledenlijst.LIDNUMMER]
         town = member[ledenlijst.WOONPLAATS]
         postcode = member[ledenlijst.POSTCODE]
         digits = ledenlijst.parse_postcode(postcode)
         afdeling_from = find_afdeling(afdelingen_oud, digits)
         afdeling_to   = find_afdeling(afdelingen_new, digits)
+        nieuwsbrief_from = "nieuwsbrief-" + afdeling_from.lower()
+        nieuwsbrief_to   = "nieuwsbrief-" + afdeling_to.lower()
         logger.info('Move a member living in ' + town + ' from ' + afdeling_from + ' to ' + afdeling_to)
-
-    logger.info("Doing mass (un)subscribes")
-    # Iterate over reallocated.values() and move members
-    for member in reallocated:
-        olddept = find_afdeling(afdelingenoud.AFDELINGEN, ledenlijst.parse_postcode(member[ledenlijst.POSTCODE]))
-        newdept = find_afdeling(afdelingen.AFDELINGEN, ledenlijst.parse_postcode(member[ledenlijst.POSTCODE]))
-        oldlist = "nieuwsbrief-" + olddept.lower()
-        newlist = "nieuwsbrief-" + newdept.lower()
         if not dryrun:
-            CommandUnsub.unsubscribe(member[ledenlijst.LIDNUMMER], oldlist)
-            CommandSub.subscribe(member[ledenlijst.LIDNUMMER], newlist)
+            CommandUnsub.unsubscribe(lidnummer, nieuwsbrief_from)
+            CommandSub.subscribe(lidnummer, nieuwsbrief_to)
     if dryrun:
         logger.warning("Dry-run. No actual database changes!")
     logger.info('END')
