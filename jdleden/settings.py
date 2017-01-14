@@ -118,8 +118,8 @@ TIME_ZONE = 'Europe/Amsterdam'
 # MEZZANINE #
 #############
 
-SITE_ID = 1
-PACKAGE_NAME_FILEBROWSER = 'filebrowser'
+SITE_ID = 1  # required dummy setting
+PACKAGE_NAME_FILEBROWSER = 'filebrowser'  # required dummy setting
 
 try:
     from mezzanine.utils.conf import set_dynamic_settings
