@@ -7,11 +7,13 @@ logger = logging.getLogger(__name__)
 
 
 def create_region_mail_list(ledenlijst_input, gemeenten):
+    logger.info('input file: ' + ledenlijst_input + ', gemeenten: ' + str(gemeenten))
     gemeenten_lowercase = get_gemeenten_lowercase(gemeenten)
     members = read_xls(ledenlijst_input)
     emails = get_emails(members, gemeenten_lowercase)
     maillist_filepath = get_filename_output(gemeenten_lowercase)
     create_email_list(emails, maillist_filepath)
+    logger.info('list created with ' + str(len(emails)) + ' emails')
     return maillist_filepath, len(emails)
 
 
