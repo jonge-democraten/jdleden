@@ -43,6 +43,11 @@ Create members per department excel output,
 $ python manage.py createdepartmentexcels members_list.xlsx
 ```
 
+Create a text file with member email addresses for a given region, based on a list of gemeenten,
+```
+$ python manage.py createregionlist --ledenlijst 2017ledenlijst.xls --gemeenten Amsterdam Utrecht Eindhoven
+```
+
 See https://trac.jongedemocraten.nl/wiki/UpdateLedenlijst
 
 
