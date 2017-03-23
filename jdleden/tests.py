@@ -7,6 +7,7 @@ import jdleden.ledenlijst
 import jdleden.afdelingrondschuif
 from jdleden import afdelingen
 from jdleden import afdelingenoud
+from jdleden.regionmaillist import create_region_mail_list
 from testdata import test_afdelingen
 
 
@@ -78,3 +79,29 @@ class TestCasePostcodeChecks(TestCase):
     def test_check_postcode_ranges(self):
         correct_ranges = jdleden.afdelingrondschuif.check_postcode_ranges(afdelingen.AFDELINGEN)
         self.assertTrue(correct_ranges)
+
+
+class TestCaseRegionMailList(TestCase):
+    members_file = 'testdata/test_data_a.xls'
+
+    def test_create_list_amsterdam(self):
+        maillist_filepath, list_length = create_region_mail_list(self.members_file, ['Amsterdam'])
+        self.assertTrue(os.path.exists(maillist_filepath))
+        self.assertEqual(list_length, 976)
+        os.remove(maillist_filepath)
+        maillist_filepath, list_length = create_region_mail_list(self.members_file, ['AMSTERDAM'])
+        self.assertTrue(os.path.exists(maillist_filepath))
+        self.assertEqual(list_length, 976)
+        os.remove(maillist_filepath)
+
+    def test_create_list_amsterdam_utrecht(self):
+        maillist_filepath, list_length = create_region_mail_list(self.members_file, ['Amsterdam', 'Utrecht'])
+        self.assertTrue(os.path.exists(maillist_filepath))
+        self.assertEqual(list_length, 1918)
+        os.remove(maillist_filepath)
+
+    def test_create_list_haarlem(self):
+        maillist_filepath, list_length = create_region_mail_list(self.members_file, ['Haarlem'])
+        self.assertTrue(os.path.exists(maillist_filepath))
+        self.assertEqual(list_length, 0)
+        os.remove(maillist_filepath)
