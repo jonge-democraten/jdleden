@@ -43,7 +43,7 @@ HEADERS = [
     u'Gemeente', u'Adres: Land',
     u'Geen lid sinds', u'Geen abonnement sinds',
     u'Is lid D66', u'Stemrecht D66', u'Is lid JD', u'Stemrecht JD',
-    u'E-mail privé', u'Telefoon: Mobiel', u'Telefoon: Prive',
+    u'E-mail prive', u'Telefoon: Mobiel', u'Telefoon: Prive',
     u'Geslacht',
     u'Geboortedatum',
     u'Ontbrekende gegevens', u'Vrij tekstveld test',
