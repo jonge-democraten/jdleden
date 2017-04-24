@@ -8,3 +8,4 @@ xlwt==1.1.2
 mysqlclient==1.3.9
 # add explicit bleach verion due to undocument incompatibility of mezzanine 4.1 and bleach 2.0, https://github.com/stephenmcd/mezzanine/issues/1741
 bleach==1.5
+unidecode==0.04.20

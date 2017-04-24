@@ -11,6 +11,8 @@ from unittest.mock import create_autospec
 import xlrd
 import xlwt
 
+from unidecode import unidecode
+
 from hemres.management.commands import janeus_subscribe
 from hemres.management.commands import janeus_unsubscribe
 
@@ -272,7 +274,7 @@ def read_xls(f):
         sys.exit(1)
     # Confirm first row matches with expectations
     for header_expected, header in zip(HEADERS, sheet.row_values(0)):
-        if header_expected != header:
+        if unidecode(header_expected).lower() != unidecode(header).lower():
             logger.critical("First row does not match expectations, possible format-change. Please contact the ICT-team if you are not completely sure what to do.")
             logger.critical("header: " + header + ", expected: " + header_expected)
             sys.exit(1)
