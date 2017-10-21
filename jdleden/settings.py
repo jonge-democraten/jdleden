@@ -107,6 +107,7 @@ MIDDLEWARE_CLASSES = (
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
+    "janeus.utils.CurrentRequestMiddleware",
 )
 
 ALLOWED_HOSTS = ['example.com']
