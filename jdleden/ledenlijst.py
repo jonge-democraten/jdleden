@@ -352,11 +352,8 @@ def find_department(pc):
 def split_by_department(members):
     s = dict()
     for id in members.keys():
-        if members[id][LAND].upper() != 'NEDERLAND':
-            d = 'Buitenland'
-        else:
-            pc = parse_postcode(members[id][POSTCODE])
-            d = find_department(pc)
+        pc = parse_postcode(members[id][POSTCODE])
+        d = find_department(pc)
         if not d in s:
             s[d] = dict()
         s[d][id] = members[id]
